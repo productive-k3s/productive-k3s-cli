@@ -1,0 +1,94 @@
+site_name: Productive K3S CLI
+site_description: Unified command-line interface for the Productive K3S ecosystem.
+site_author: Productive K3S CLI
+site_url: https://cli.productive-k3s.io/
+repo_url: https://github.com/jemacchi/productive-k3s-cli
+repo_name: GitHub
+edit_uri: edit/main/docs/src/
+docs_dir: src
+site_dir: site
+
+theme:
+  name: material
+  custom_dir: src/overrides
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.path
+    - navigation.sections
+    - navigation.expand
+    - navigation.footer
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: white
+      accent: blue
+  font: false
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - English:
+      - Home: en/index.md
+      - Developer Documentation:
+          - en/developer-docs/index.md
+          - Guides:
+              - en/developer-docs/guides/index.md
+              - CLI scope and responsibilities: en/developer-docs/guides/cli-scope.md
+              - Project layout: en/developer-docs/guides/project-layout.md
+              - Bundle contract: en/developer-docs/guides/bundle-contract.md
+              - Core interface mapping: en/developer-docs/guides/core-interface.md
+              - Infra interface mapping: en/developer-docs/guides/infra-interface.md
+              - Versioning model: en/developer-docs/guides/versioning.md
+              - Documentation workflow: en/developer-docs/guides/documentation-workflow.md
+  - Español:
+      - Inicio: es/index.md
+      - Documentación para desarrolladores:
+          - es/developer-docs/index.md
+          - Guías:
+              - es/developer-docs/guides/index.md
+              - Alcance y responsabilidades del CLI: es/developer-docs/guides/cli-scope.md
+              - Organización del proyecto: es/developer-docs/guides/project-layout.md
+              - Contrato de bundles: es/developer-docs/guides/bundle-contract.md
+              - Mapeo de interfaz Core: es/developer-docs/guides/core-interface.md
+              - Mapeo de interfaz Infra: es/developer-docs/guides/infra-interface.md
+              - Modelo de versionado: es/developer-docs/guides/versioning.md
+              - Flujo de documentación: es/developer-docs/guides/documentation-workflow.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jemacchi/productive-k3s-cli
