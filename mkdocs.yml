@@ -1,0 +1,51 @@
+site_name: Productive K3S CLI
+site_description: Developer documentation and implementation specification for the Productive K3S CLI.
+repo_name: productive-k3s-cli
+repo_url: https://github.com/jemacchi/productive-k3s-cli
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - toc.integrate
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Developer Documentation:
+      - Overview: developer/index.md
+      - Ecosystem: developer/overview/ecosystem.md
+      - Architecture:
+          - CLI Architecture: developer/architecture/cli-architecture.md
+          - Execution Model: developer/architecture/execution-model.md
+      - Bundles:
+          - Versioning: developer/bundles/versioning.md
+          - Bundle Contract: developer/bundles/bundle-contract.md
+      - CLI:
+          - User-facing Interface: developer/cli/user-facing-interface.md
+          - Command Mapping: developer/cli/command-mapping.md
+      - Public Bundle Interfaces:
+          - Productive K3S Core: developer/core/public-interface.md
+          - Productive K3S Infra: developer/infra/public-interface.md
+      - Profiles: developer/profiles/profile-contract.md
+      - Workflows:
+          - Install Flow: developer/workflows/install-flow.md
+      - Testing: developer/testing/testing-strategy.md
+      - Decisions:
+          - Initial CLI Contract: developer/decisions/0001-initial-cli-contract.md
