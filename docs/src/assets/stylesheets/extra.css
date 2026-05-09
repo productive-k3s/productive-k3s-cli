@@ -1,0 +1,19 @@
+:root {
+  --md-primary-fg-color: #ffffff;
+  --md-accent-fg-color: #2563eb;
+}
+
+.md-header,
+.md-tabs {
+  box-shadow: none;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-weight: 700;
+}
+
+.md-typeset code {
+  border-radius: 0.25rem;
+}
