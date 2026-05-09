@@ -1,0 +1,25 @@
+
+name: CLI Contracts
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - development
+
+jobs:
+  cli-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run CLI contract tests
+        run: make test-cli-contract
+
+      - name: Upload CLI contract artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: productive-k3s-cli-contract-artifacts
+          path: tests/artifacts/*.json

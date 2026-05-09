@@ -1,4 +1,4 @@
-.PHONY: docs-build docs-serve docs-up docs-down docs-clean
+.PHONY: docs-build docs-serve docs-up docs-down docs-clean test-cli-contract test-cli-contract-clean
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
 
@@ -16,3 +16,9 @@ docs-down:
 
 docs-clean:
 	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-clean
+	
+test-cli-contract:
+	./tests/run-cli-contracts.sh
+
+test-cli-contract-clean:
+	rm -rf tests/artifacts/*
