@@ -1,0 +1,89 @@
+
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-contract:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout productive-k3s-cli
+        uses: actions/checkout@v4
+        with:
+          path: productive-k3s-cli
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: productive-k3s-cli/go.mod
+
+      - name: Run Go tests
+        working-directory: productive-k3s-cli
+        shell: bash
+        run: make go-test
+
+      - name: Run CLI contract tests
+        working-directory: productive-k3s-cli
+        shell: bash
+        run: make test-cli-contract
+
+      - name: Upload CLI contract artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: productive-k3s-cli-contract-artifacts
+          path: |
+            productive-k3s-cli/test-artifacts
+          if-no-files-found: ignore
+
+  live-onprem-remote-github-host:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false }}
+    needs:
+      - static-and-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout productive-k3s-cli
+        uses: actions/checkout@v4
+        with:
+          path: productive-k3s-cli
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: productive-k3s-cli/go.mod
+
+      - name: Run GitHub-host on-prem remote live test
+        working-directory: productive-k3s-cli
+        shell: bash
+        env:
+          TELEMETRY_ENABLED: "false"
+        run: make test-live-gha-onprem-remote
+
+      - name: Upload live artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: productive-k3s-cli-live-onprem-remote-github-host-artifacts
+          path: |
+            productive-k3s-cli/test-artifacts
+          if-no-files-found: ignore

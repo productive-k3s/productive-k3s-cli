@@ -1,0 +1,17 @@
+
+{
+  "schema_version": "productive-k3s-cli-release-manifest/v1",
+  "cli_version": "1.0.0",
+  "core": {
+    "bundle_name": "productive-k3s-core",
+    "bundle_version": "0.9.1",
+    "source": "local",
+    "path": "tests/fixtures/bundles/core/0.9.1"
+  },
+  "infra": {
+    "bundle_name": "productive-k3s-infra",
+    "bundle_version": "0.9.41-0.9.1",
+    "source": "local",
+    "path": "tests/fixtures/bundles/infra/0.9.41-0.9.1"
+  }
+}

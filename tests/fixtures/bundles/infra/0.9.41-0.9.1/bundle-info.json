@@ -1,0 +1,16 @@
+
+{
+  "schema_version": "1",
+  "bundle_name": "productive-k3s-infra",
+  "bundle_type": "productive-k3s-infra",
+  "bundle_version": "0.9.41-0.9.1",
+  "cli_entrypoint": "productive-k3s-infra.sh",
+  "platform": "any",
+  "core_dependency": {
+    "bundle_name": "productive-k3s-core",
+    "bundle_version": "0.9.1"
+  },
+  "api_compatibility": {
+    "contract": "productive-k3s-cli-bundle-info/v1"
+  }
+}

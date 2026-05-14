@@ -35,7 +35,7 @@ Example mappings:
 
 | CLI command | Core delegation |
 | --- | --- |
-| `productive-k3s doctor` | `productive-k3s-core.sh preflight` plus Infra checks |
-| `productive-k3s install` | `productive-k3s-core.sh bootstrap` plus optional Infra workflow |
-| `productive-k3s validate` | `productive-k3s-core.sh validate` plus optional Infra validation |
-| `productive-k3s bundle info` | `productive-k3s-core.sh bundle info --json` |
+| `pk3s doctor` | `productive-k3s-core.sh preflight` plus Infra checks |
+| `pk3s install` | `productive-k3s-core.sh bootstrap` plus optional Infra workflow |
+| `pk3s validate` | `productive-k3s-core.sh validate` plus optional Infra validation |
+| `pk3s bundle info` | `productive-k3s-core.sh bundle info --json` |
