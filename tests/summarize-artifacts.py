@@ -22,6 +22,8 @@ for path in sorted(artifacts_dir.glob("*-contract.json")):
 counts = {}
 for result in results:
     status = result.get("status", "unknown")
+    if status == "passed":
+        status = "pass"
     counts[status] = counts.get(status, 0) + 1
 
 summary = {

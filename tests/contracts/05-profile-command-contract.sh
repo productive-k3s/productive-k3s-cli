@@ -2,8 +2,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACTS_DIR="${TEST_ARTIFACTS_DIR:-${TESTS_DIR}/../test-artifacts}"
 source "${TESTS_DIR}/lib/json.sh"
-ARTIFACT="${TESTS_DIR}/artifacts/profile-command-contract.json"
+ARTIFACT="${ARTIFACTS_DIR}/profile-command-contract.json"
 PROFILE="${TESTS_DIR}/fixtures/profiles/edge-arm.env"
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 

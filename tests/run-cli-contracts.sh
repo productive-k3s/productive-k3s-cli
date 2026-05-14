@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TESTS_DIR="${ROOT_DIR}/tests"
-ARTIFACTS_DIR="${TESTS_DIR}/artifacts"
+ARTIFACTS_DIR="${TEST_ARTIFACTS_DIR:-${ROOT_DIR}/test-artifacts}"
 
 mkdir -p "${ARTIFACTS_DIR}"
 

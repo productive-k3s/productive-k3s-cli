@@ -2,7 +2,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARTIFACT="${TESTS_DIR}/artifacts/infra-command-mapping-contract.json"
+ARTIFACTS_DIR="${TEST_ARTIFACTS_DIR:-${TESTS_DIR}/../test-artifacts}"
+ARTIFACT="${ARTIFACTS_DIR}/infra-command-mapping-contract.json"
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 python3 - "$ARTIFACT" "$started_at" <<'PY'
@@ -16,13 +17,13 @@ result = {
   "started_at": started_at,
   "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
   "expected_mappings": {
-    "productive-k3s profile list": "./productive-k3s-infra.sh list-profiles",
-    "productive-k3s profile validate edge-arm": "./productive-k3s-infra.sh validate --profile <file>",
-    "productive-k3s plan --profile edge-arm": "./productive-k3s-infra.sh plan --profile <file>",
-    "productive-k3s apply --profile edge-arm": "./productive-k3s-infra.sh apply --profile <file>",
-    "productive-k3s destroy --profile edge-arm": "./productive-k3s-infra.sh destroy --profile <file>",
-    "productive-k3s status --profile edge-arm": "./productive-k3s-infra.sh status --profile <file>"
+    "pk3s profile list": "./productive-k3s-infra.sh list-profiles",
+    "pk3s profile validate edge-arm": "./productive-k3s-infra.sh validate-profile --profile <file>",
+    "pk3s plan --profile edge-arm": "./productive-k3s-infra.sh plan --profile <file>",
+    "pk3s apply --profile edge-arm": "./productive-k3s-infra.sh apply --profile <file>",
+    "pk3s destroy --profile edge-arm": "./productive-k3s-infra.sh destroy --profile <file>",
+    "pk3s status --profile edge-arm": "./productive-k3s-infra.sh status --profile <file>"
   }
 }
-open(path, "w", encoding="utf-8").write(json.dumps(result, indent=2, sort_keys=True) + "\\n")
+open(path, "w", encoding="utf-8").write(json.dumps(result, indent=2, sort_keys=True) + "\n")
 PY

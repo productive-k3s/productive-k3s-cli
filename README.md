@@ -2,63 +2,81 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-yellow.svg)](./LICENSE)
 
-Short project description.
+`productive-k3s-cli` is the unified command-line entrypoint for the Productive K3S ecosystem. It resolves Productive K3S Core and Productive K3S Infra bundles either from sibling repositories on disk or from published GitHub Releases, then delegates execution to their public entrypoints.
 
 ## Overview
 
-Explain in 2 or 3 lines what `productive-k3s-cli` solves, who it is for, and what scope it covers.
+This repository packages the user-facing executable `pk3s`.
+
+The first release supports:
+
+- local bundle resolution against sibling repositories;
+- remote bundle resolution against GitHub Releases;
+- command delegation to `productive-k3s-core.sh` and `productive-k3s-infra.sh`;
+- native CLI builds for Linux, macOS, and Windows.
 
 ## Documentation
 
-Main links to documentation, site, guides, or references:
-
-- [Site home](https://example.com/)
-- [User docs](https://example.com/user-docs/)
-- [Developer docs](https://example.com/developer-docs/)
-
-## Product
-
-Describe the CLI value proposition here:
-
-- main use case
-- main commands or workflows
-- project limits
+- Developer docs site: [docs/src/en/developer-docs](./docs/src/en/developer-docs/index.md)
+- User docs site content: [docs/src/en/user-docs](./docs/src/en/user-docs/index.md)
+- CLI specification: [docs/src/en/developer-docs/specifications/cli-specification.md](./docs/src/en/developer-docs/specifications/cli-specification.md)
 
 ## Installation
 
-Document how it is installed:
+Unix-like install:
 
 ```bash
-# pending
+curl -fsSL https://raw.githubusercontent.com/jemacchi/productive-k3s-cli/main/install.sh | bash
+```
+
+Manual local install from source tree:
+
+```bash
+make build
+./pk3s version
 ```
 
 ## Usage
 
-Minimal usage examples:
+Show the main command groups:
 
 ```bash
-# pending
+pk3s help
+```
+
+Force remote bundle resolution:
+
+```bash
+PRODUCTIVE_K3S_SOURCE=remote pk3s bundle core info --json
+PRODUCTIVE_K3S_SOURCE=remote pk3s profile list
+```
+
+Force local sibling resolution:
+
+```bash
+PRODUCTIVE_K3S_SOURCE=local pk3s bundle infra info --json
+PRODUCTIVE_K3S_SOURCE=local pk3s profile list
 ```
 
 ## Development
 
-Notes for contributing or developing locally:
-
-- prerequisites
-- useful commands
-- testing strategy
+Useful commands:
 
 ```bash
-# pending
+make go-test
+make test-static
+make build
+make test-cli-contract
+make docs-build
+make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.3-0.9.1
+make tag-release VERSION=1.0.1
 ```
 
 ## Roadmap
 
-A short list of future work or milestones:
-
-- pending
-- pending
-- pending
+- publish versioned CLI release archives and installer assets
+- expand user-facing command coverage beyond the initial command contract
+- document Windows PowerShell installation flow in release notes and docs
 
 ## License
 

@@ -2,9 +2,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACTS_DIR="${TEST_ARTIFACTS_DIR:-${TESTS_DIR}/../test-artifacts}"
 source "${TESTS_DIR}/lib/json.sh"
-ARTIFACT="${TESTS_DIR}/artifacts/error-handling-contract.json"
-CLI_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${TESTS_DIR}/../productive-k3s}"
+ARTIFACT="${ARTIFACTS_DIR}/error-handling-contract.json"
+CLI_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${TESTS_DIR}/../pk3s}"
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 if [[ ! -x "${CLI_BIN}" ]]; then

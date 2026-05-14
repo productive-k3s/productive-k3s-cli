@@ -4,14 +4,14 @@
   "cli_version": "1.0.0",
   "core": {
     "bundle_name": "productive-k3s-core",
-    "bundle_version": "2.1.0",
+    "bundle_version": "0.9.1",
     "source": "local",
-    "path": "tests/fixtures/bundles/core/2.1.0"
+    "path": "tests/fixtures/bundles/core/0.9.1"
   },
   "infra": {
     "bundle_name": "productive-k3s-infra",
-    "bundle_version": "1.4.0-2.1.0",
+    "bundle_version": "0.9.41-0.9.1",
     "source": "local",
-    "path": "tests/fixtures/bundles/infra/1.4.0-2.1.0"
+    "path": "tests/fixtures/bundles/infra/0.9.41-0.9.1"
   }
 }

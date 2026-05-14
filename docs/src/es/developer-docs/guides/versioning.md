@@ -57,3 +57,36 @@ Ejemplo:
 | `1.0.0` | `2.1.0` | `1.4.0-2.1.0` |
 
 El CLI debe rechazar combinaciones arbitrarias o incompatibles de Core/Infra.
+
+## Defaults del repositorio
+
+Los defaults versionados que usa el repositorio para resolver bundles remotos viven en `scripts/release-config.sh`:
+
+- `PK3S_CLI_VERSION_DEFAULT`
+- `PRODUCTIVE_K3S_CORE_VERSION_DEFAULT`
+- `PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT`
+- `PRODUCTIVE_K3S_CORE_RELEASE_REPO_DEFAULT`
+- `PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT`
+
+El default de Infra siempre debe permanecer atado al default de Core. Eso implica que el sufijo de `PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT` debe coincidir con `PRODUCTIVE_K3S_CORE_VERSION_DEFAULT`.
+
+## Flujo de release para desarrollo
+
+Cuando el CLI necesita pasar a una nueva baseline de Core/Infra:
+
+1. ejecutar `make set-bundles-versions CORE_VERSION=A.B.C INFRA_VERSION=X.Y.Z-A.B.C`
+2. ejecutar `make test-static`
+3. crear el siguiente tag del CLI con `make tag-release VERSION=K.L.M`
+4. pushear el tag semántico resultante con `git push origin K.L.M`
+
+`set-bundles-versions` valida que ambos tags upstream de bundles ya existan antes de reescribir defaults, fixtures, docs y tests.
+
+`tag-release` valida todo lo siguiente antes de crear el tag local del CLI:
+
+- que la versión del CLI cumpla `X.Y.Z`
+- que la versión default de Core sea válida
+- que la versión default de Infra sea válida
+- que la versión default de Infra esté atada a la versión default de Core
+- que el tag default de Core exista en el remote configurado de `productive-k3s-core`
+- que el tag default de Infra exista en el remote configurado de `productive-k3s-infra`
+- que el tag del CLI no exista todavía en local

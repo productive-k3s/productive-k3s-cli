@@ -2,8 +2,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACTS_DIR="${TEST_ARTIFACTS_DIR:-${TESTS_DIR}/../test-artifacts}"
 source "${TESTS_DIR}/lib/json.sh"
-ARTIFACT="${TESTS_DIR}/artifacts/bundle-resolution-contract.json"
+ARTIFACT="${ARTIFACTS_DIR}/bundle-resolution-contract.json"
 MANIFEST="${TESTS_DIR}/fixtures/manifests/cli-1.0.0.json"
 started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 

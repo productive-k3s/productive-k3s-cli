@@ -1,7 +1,9 @@
 runs/
 .codex
-test-artifacts/*.json
+test-artifacts/
 docs/.venv/
 docs/site/
 docs/.mkdocs.pid
 docs/.mkdocs.log
+pk3s
+dist/

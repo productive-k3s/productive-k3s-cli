@@ -35,7 +35,7 @@ Ejemplos:
 
 | Comando CLI | Delegación Core |
 | --- | --- |
-| `productive-k3s doctor` | `productive-k3s-core.sh preflight` más chequeos de Infra |
-| `productive-k3s install` | `productive-k3s-core.sh bootstrap` más workflow opcional de Infra |
-| `productive-k3s validate` | `productive-k3s-core.sh validate` más validación opcional de Infra |
-| `productive-k3s bundle info` | `productive-k3s-core.sh bundle info --json` |
+| `pk3s doctor` | `productive-k3s-core.sh preflight` más chequeos de Infra |
+| `pk3s install` | `productive-k3s-core.sh bootstrap` más workflow opcional de Infra |
+| `pk3s validate` | `productive-k3s-core.sh validate` más validación opcional de Infra |
+| `pk3s bundle info` | `productive-k3s-core.sh bundle info --json` |

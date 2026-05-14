@@ -46,8 +46,8 @@ Example mappings:
 
 | CLI command | Infra delegation |
 | --- | --- |
-| `productive-k3s profile list` | `productive-k3s-infra.sh list-profiles` |
-| `productive-k3s plan --profile <file>` | `productive-k3s-infra.sh plan --profile <file>` |
-| `productive-k3s apply --profile <file>` | `productive-k3s-infra.sh apply --profile <file>` |
-| `productive-k3s destroy --profile <file>` | `productive-k3s-infra.sh destroy --profile <file>` |
-| `productive-k3s status --profile <file>` | `productive-k3s-infra.sh status --profile <file>` |
+| `pk3s profile list` | `productive-k3s-infra.sh list-profiles` |
+| `pk3s plan --profile <file>` | `productive-k3s-infra.sh plan --profile <file>` |
+| `pk3s apply --profile <file>` | `productive-k3s-infra.sh apply --profile <file>` |
+| `pk3s destroy --profile <file>` | `productive-k3s-infra.sh destroy --profile <file>` |
+| `pk3s status --profile <file>` | `productive-k3s-infra.sh status --profile <file>` |
