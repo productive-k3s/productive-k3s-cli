@@ -1,6 +1,7 @@
 .PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
+GO_BIN ?= go
 
 build:
 	$(SCRIPTS_DIR)/build-cli.sh build-local
@@ -9,7 +10,7 @@ build-release:
 	$(SCRIPTS_DIR)/build-cli.sh build-release
 
 go-test:
-	PATH=/usr/local/go/bin:$$PATH /usr/local/go/bin/go test ./...
+	$(GO_BIN) test ./...
 
 test-static:
 	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-static

@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+GO_BIN="${GO_BIN:-$(command -v go || true)}"
 
 usage() {
   cat <<'USAGE'
@@ -23,6 +24,13 @@ Development commands:
   set-bundles-versions
   tag-release
 USAGE
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
 }
 
 if (($# == 0)); then
@@ -53,7 +61,9 @@ case "$COMMAND" in
     exec bash "${REPO_DIR}/tests/check-test-status.sh" "$@"
     ;;
   test-static)
-    PATH=/usr/local/go/bin:$PATH /usr/local/go/bin/go test ./...
+    need_cmd "${GO_BIN}"
+    "${GO_BIN}" test ./...
+    bash "${REPO_DIR}/tests/test-go-tooling.sh"
     bash "${REPO_DIR}/tests/test-release-versioning.sh"
     bash "${REPO_DIR}/tests/test-set-bundles-versions.sh"
     bash "${REPO_DIR}/tests/test-tag-release.sh"

@@ -30,6 +30,11 @@ jobs:
           path: productive-k3s-cli
           fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: productive-k3s-cli/go.mod
+
       - name: Run Go tests
         working-directory: productive-k3s-cli
         shell: bash
@@ -61,6 +66,11 @@ jobs:
         with:
           path: productive-k3s-cli
           fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: productive-k3s-cli/go.mod
 
       - name: Run GitHub-host on-prem remote live test
         working-directory: productive-k3s-cli

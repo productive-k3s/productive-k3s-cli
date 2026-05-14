@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GO_BIN="${GO_BIN:-/usr/local/go/bin/go}"
+GO_BIN="${GO_BIN:-$(command -v go || true)}"
 DIST_DIR="${REPO_DIR}/dist"
 BIN_NAME="pk3s"
 
