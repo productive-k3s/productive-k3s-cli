@@ -16,6 +16,7 @@ Development commands:
   docs-up
   docs-down
   docs-clean
+  docs-publish-check
   test-clean
   test-checkstatus
   test-static
@@ -54,6 +55,10 @@ case "$COMMAND" in
   docs-down|docs-clean)
     exec "${REPO_DIR}/docs/clean.sh" "$@"
     ;;
+  docs-publish-check)
+    bash "${REPO_DIR}/tests/test-docs-publishing.sh"
+    exec bash "${REPO_DIR}/tests/test-docs-structure.sh" "$@"
+    ;;
   test-clean)
     exec bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
     ;;
@@ -64,6 +69,8 @@ case "$COMMAND" in
     need_cmd "${GO_BIN}"
     "${GO_BIN}" test ./...
     bash "${REPO_DIR}/tests/test-go-tooling.sh"
+    bash "${REPO_DIR}/tests/test-docs-publishing.sh"
+    bash "${REPO_DIR}/tests/test-docs-structure.sh"
     bash "${REPO_DIR}/tests/test-release-versioning.sh"
     bash "${REPO_DIR}/tests/test-set-bundles-versions.sh"
     bash "${REPO_DIR}/tests/test-tag-release.sh"
