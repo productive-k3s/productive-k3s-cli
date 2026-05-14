@@ -1,5 +1,5 @@
 # Productive K3S CLI
 
-This site documents the developer-facing specification for Productive K3S CLI.
+This site documents Productive K3S CLI as a product, a user tool, and a development repository.
 
-The CLI is intended to provide a single user-facing entrypoint over the versioned Productive K3S Core and Productive K3S Infra bundles.
+The CLI provides one executable, `pk3s`, over the versioned Productive K3S Core and Productive K3S Infra bundles.

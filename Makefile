@@ -1,4 +1,4 @@
-.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
 GO_BIN ?= go
@@ -29,6 +29,10 @@ docs-down:
 
 docs-clean:
 	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-clean
+
+docs-publish-check:
+	bash ./tests/test-docs-publishing.sh
+	bash ./tests/test-docs-structure.sh
 
 test-clean:
 	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-clean

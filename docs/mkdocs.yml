@@ -1,5 +1,5 @@
 site_name: Productive K3S CLI
-site_description: Unified command-line interface for the Productive K3S ecosystem.
+site_description: Unified command-line interface for the Productive K3S ecosystem, with bilingual documentation.
 site_author: Productive K3S CLI
 site_url: https://cli.productive-k3s.io/
 repo_url: https://github.com/jemacchi/productive-k3s-cli
@@ -63,14 +63,33 @@ nav:
   - Home: index.md
   - English:
       - Home: en/index.md
-      - User Documentation:
+      - Product:
+          - en/product/index.md
+          - How to use: en/product/how-to-use.md
+          - Reasons behind: en/product/reasons-behind.md
+          - Relationship with Productive K3S Core and Infra: en/product/productive-k3s-relationship.md
+      - User docs:
           - en/user-docs/index.md
           - Installation: en/user-docs/installation.md
           - Usage: en/user-docs/usage.md
           - Profiles: en/user-docs/profiles.md
           - Troubleshooting: en/user-docs/troubleshooting.md
-      - Developer Documentation:
+      - Developer docs:
           - en/developer-docs/index.md
+          - Make targets: en/developer-docs/make-targets.md
+          - GitHub Actions and releases: en/developer-docs/github-actions.md
+          - Architecture: en/developer-docs/architecture/index.md
+          - CLI: en/developer-docs/cli/index.md
+          - Bundles: en/developer-docs/bundles/index.md
+          - Profiles: en/developer-docs/profiles/index.md
+          - Development: en/developer-docs/development/index.md
+          - Addons: en/developer-docs/addons/index.md
+          - Decisions: en/developer-docs/decisions/index.md
+          - Specifications:
+              - en/developer-docs/specifications/index.md
+              - CLI specification: en/developer-docs/specifications/cli-specification.md
+          - Testing: en/developer-docs/testing/index.md
+          - Roadmap: en/developer-docs/roadmap/index.md
           - Guides:
               - en/developer-docs/guides/index.md
               - CLI scope and responsibilities: en/developer-docs/guides/cli-scope.md
@@ -83,6 +102,11 @@ nav:
               - Live remote validation: en/developer-docs/guides/live-validation.md
   - Español:
       - Inicio: es/index.md
+      - Producto:
+          - es/product/index.md
+          - Cómo usar: es/product/how-to-use.md
+          - Razones del diseño: es/product/reasons-behind.md
+          - Relación con Productive K3S Core e Infra: es/product/productive-k3s-relationship.md
       - Documentación para usuarios:
           - es/user-docs/index.md
           - Instalación: es/user-docs/installation.md
@@ -91,6 +115,8 @@ nav:
           - Troubleshooting: es/user-docs/troubleshooting.md
       - Documentación para desarrolladores:
           - es/developer-docs/index.md
+          - Targets de Make: es/developer-docs/make-targets.md
+          - GitHub Actions y releases: es/developer-docs/github-actions.md
           - Guías:
               - es/developer-docs/guides/index.md
               - Alcance y responsabilidades del CLI: es/developer-docs/guides/cli-scope.md

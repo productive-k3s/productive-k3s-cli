@@ -1,4 +1,4 @@
-# Productive-k3s CLI
+# Productive K3S CLI
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-yellow.svg)](./LICENSE)
 
@@ -17,9 +17,9 @@ The first release supports:
 
 ## Documentation
 
-- Developer docs site: [docs/src/en/developer-docs](./docs/src/en/developer-docs/index.md)
+- Product docs site content: [docs/src/en/product](./docs/src/en/product/index.md)
 - User docs site content: [docs/src/en/user-docs](./docs/src/en/user-docs/index.md)
-- CLI specification: [docs/src/en/developer-docs/specifications/cli-specification.md](./docs/src/en/developer-docs/specifications/cli-specification.md)
+- Developer docs site content: [docs/src/en/developer-docs](./docs/src/en/developer-docs/index.md)
 
 ## Installation
 
@@ -68,6 +68,7 @@ make test-static
 make build
 make test-cli-contract
 make docs-build
+make docs-publish-check
 make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.3-0.9.1
 make tag-release VERSION=1.0.1
 ```
