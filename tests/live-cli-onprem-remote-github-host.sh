@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-onprem-remote-github-host.XXXXXX")"
+ARTIFACT_DIR="${ROOT_DIR}/test-artifacts/live-onprem-remote-github-host"
 ENV_FILE="${WORK_DIR}/onprem-remote.env"
 SSH_KEY_PATH="${WORK_DIR}/id_ed25519"
 CURRENT_USER="$(id -un)"
@@ -20,6 +21,69 @@ need_cmd() {
 
 cleanup() {
   rm -rf "${WORK_DIR}"
+}
+
+ssh_remote() {
+  ssh \
+    -o BatchMode=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -o ConnectTimeout=10 \
+    -i "${SSH_KEY_PATH}" \
+    "${CURRENT_USER}@${LOCALHOST_IP}" \
+    "$@"
+}
+
+write_remote_capture() {
+  local name="$1"
+  shift
+  local output_file="${ARTIFACT_DIR}/${name}.log"
+
+  {
+    printf '[CMD] %s\n' "$*"
+    ssh_remote "$@"
+  } >"${output_file}" 2>&1 || true
+}
+
+dump_cluster_diagnostics() {
+  mkdir -p "${ARTIFACT_DIR}"
+
+  write_remote_capture "system-df" "df -h"
+  write_remote_capture "system-free" "free -m"
+  write_remote_capture "system-k3s-service" "sudo systemctl status k3s --no-pager"
+  write_remote_capture "cluster-nodes" "sudo k3s kubectl get nodes -o wide"
+  write_remote_capture "cluster-pods-all" "sudo k3s kubectl get pods -A -o wide"
+  write_remote_capture "cluster-events" "sudo k3s kubectl get events -A --sort-by=.lastTimestamp"
+  write_remote_capture "registry-deploy" "sudo k3s kubectl describe deploy/registry -n registry"
+  write_remote_capture "registry-pods" "sudo k3s kubectl get pods -n registry -o wide"
+  write_remote_capture "registry-pods-describe" "sudo k3s kubectl describe pods -n registry"
+  write_remote_capture "rancher-pods" "sudo k3s kubectl get pods -n cattle-system -o wide"
+
+  local pod_names
+  pod_names="$(ssh_remote "sudo k3s kubectl get pods -n registry -o jsonpath='{range .items[*]}{.metadata.name}{\"\\n\"}{end}'" 2>/dev/null || true)"
+  if [[ -n "${pod_names}" ]]; then
+    while IFS= read -r pod_name; do
+      [[ -n "${pod_name}" ]] || continue
+      write_remote_capture "registry-${pod_name}" "sudo k3s kubectl logs -n registry ${pod_name} --all-containers=true --tail=200"
+      write_remote_capture "registry-${pod_name}-previous" "sudo k3s kubectl logs -n registry ${pod_name} --all-containers=true --previous --tail=200"
+    done <<< "${pod_names}"
+  fi
+}
+
+run_step() {
+  local step_name="$1"
+  shift
+  local output_file="${ARTIFACT_DIR}/${step_name}.log"
+
+  mkdir -p "${ARTIFACT_DIR}"
+  printf '[INFO] Running step: %s\n' "${step_name}"
+
+  if "$@" > >(tee "${output_file}") 2> >(tee -a "${output_file}" >&2); then
+    return 0
+  fi
+
+  printf '[FAIL] Step failed: %s\n' "${step_name}" >&2
+  dump_cluster_diagnostics
+  return 1
 }
 
 prepare_openssh_server() {
@@ -93,15 +157,19 @@ need_cmd python3
 
 trap cleanup EXIT
 
+mkdir -p "${ARTIFACT_DIR}"
+
 prepare_openssh_server
 prepare_ssh_key
 wait_for_ssh
 write_env_file
 
-run_pk3s profile validate --profile "${ENV_FILE}"
-run_pk3s plan --profile "${ENV_FILE}"
-run_pk3s apply --profile "${ENV_FILE}"
-run_pk3s status --profile "${ENV_FILE}"
-run_pk3s validate --profile "${ENV_FILE}"
+cp "${ENV_FILE}" "${ARTIFACT_DIR}/onprem-remote.env"
+
+run_step "profile-validate" run_pk3s profile validate --profile "${ENV_FILE}"
+run_step "plan" run_pk3s plan --profile "${ENV_FILE}"
+run_step "apply" run_pk3s apply --profile "${ENV_FILE}"
+run_step "status" run_pk3s status --profile "${ENV_FILE}"
+run_step "validate" run_pk3s validate --profile "${ENV_FILE}"
 
 printf '[PASS] onprem-basic remote GitHub-host CLI validation completed\n'
