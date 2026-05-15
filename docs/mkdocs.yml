@@ -12,6 +12,7 @@ theme:
   name: material
   custom_dir: src/overrides
   language: en
+  favicon: assets/images/favicon.ico
   features:
     - navigation.tabs
     - navigation.indexes
@@ -129,6 +130,15 @@ nav:
               - Validación remota live: es/developer-docs/guides/live-validation.md
 
 extra:
+  pk3s:
+    footer_slogan_en: "A single command surface to operate Productive K3S Core, Infra, and ecosystem bundles with one consistent workflow."
+    footer_slogan_es: "Una sola superficie de comandos para operar Productive K3S Core, Infra y los bundles del ecosistema con un flujo consistente."
+    contact_label_en: "Contact"
+    contact_label_es: "Contacto"
+    newsletter_label_en: "Newsletter"
+    newsletter_label_es: "Newsletter"
+    newsletter_placeholder_en: "E-mail"
+    newsletter_placeholder_es: "E-mail"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/jemacchi/productive-k3s-cli
