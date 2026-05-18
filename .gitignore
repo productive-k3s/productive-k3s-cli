@@ -1,5 +1,7 @@
 runs/
 .codex
+docs/superpowers/
+superpowers/
 test-artifacts/
 docs/.venv/
 docs/site/
