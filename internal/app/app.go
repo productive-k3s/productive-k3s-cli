@@ -87,31 +87,134 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 		return 0
 	}
 
+	filteredArgs, telemetryOverride, code := parseTelemetryOverride(args, deps.Stderr)
+	if code != 0 {
+		return code
+	}
+	args = filteredArgs
+
 	switch args[0] {
 	case "help", "-h", "--help":
 		return runHelp(args[1:], deps)
 	case "version":
 		fmt.Fprintln(deps.Stdout, Version)
 		return 0
+	case "config":
+		return runConfig(args[1:], deps)
 	case "bundle":
 		return runBundle(ctx, args[1:], deps)
 	case "profile":
-		return runProfile(ctx, args[1:], deps)
+		return runProfile(ctx, args[1:], deps, telemetryOverride)
 	case "plan", "apply", "destroy", "status":
-		return runInfraProfileCommand(ctx, args[0], args[1:], deps)
+		return runInfraProfileCommand(ctx, args[0], args[1:], deps, telemetryOverride)
 	case "doctor":
-		return runDoctor(ctx, args[1:], deps)
+		return runDoctor(ctx, args[1:], deps, telemetryOverride)
 	case "install":
-		return runInstall(ctx, args[1:], deps)
+		return runInstall(ctx, args[1:], deps, telemetryOverride)
 	case "validate":
-		return runValidate(ctx, args[1:], deps)
+		return runValidate(ctx, args[1:], deps, telemetryOverride)
 	case "backup":
-		return runBackup(ctx, args[1:], deps)
+		return runBackup(ctx, args[1:], deps, telemetryOverride)
 	default:
 		fmt.Fprintf(deps.Stderr, "Unsupported command: %s\n\n", args[0])
 		printRootHelp(deps.Stderr)
 		return 2
 	}
+}
+
+func runConfig(args []string, deps Dependencies) int {
+	if len(args) < 2 {
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s config <telemetry|observability> ...")
+		return 2
+	}
+	switch args[0] {
+	case "telemetry":
+		switch args[1] {
+		case "enable":
+			if err := writeTelemetryPreference(true); err != nil {
+				fmt.Fprintf(deps.Stderr, "could not persist telemetry config: %v\n", err)
+				return 1
+			}
+			fmt.Fprintln(deps.Stdout, "Telemetry has been enabled for future pk3s runs.")
+			return 0
+		case "disable":
+			if err := writeTelemetryPreference(false); err != nil {
+				fmt.Fprintf(deps.Stderr, "could not persist telemetry config: %v\n", err)
+				return 1
+			}
+			fmt.Fprintln(deps.Stdout, "Telemetry has been disabled for future pk3s runs.")
+			return 0
+		case "status":
+			value, err := readTelemetryPreference()
+			if err != nil {
+				fmt.Fprintf(deps.Stderr, "could not read telemetry config: %v\n", err)
+				return 1
+			}
+			if value == nil {
+				fmt.Fprintln(deps.Stdout, "Telemetry preference is not configured.")
+				return 0
+			}
+			if *value {
+				fmt.Fprintln(deps.Stdout, "Telemetry is currently enabled.")
+			} else {
+				fmt.Fprintln(deps.Stdout, "Telemetry is currently disabled.")
+			}
+			return 0
+		default:
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s config telemetry <enable|disable|status>")
+			return 2
+		}
+	case "observability":
+		switch args[1] {
+		case "set":
+			if len(args) < 3 || strings.TrimSpace(args[2]) == "" {
+				fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability set <telemetry-bearer-token>")
+				return 2
+			}
+			if err := writeObservabilityToken(args[2]); err != nil {
+				fmt.Fprintf(deps.Stderr, "could not persist observability config: %v\n", err)
+				return 1
+			}
+			fmt.Fprintln(deps.Stdout, "Observability token has been configured for future pk3s runs.")
+			return 0
+		case "clear":
+			if err := clearObservabilityToken(); err != nil {
+				fmt.Fprintf(deps.Stderr, "could not persist observability config: %v\n", err)
+				return 1
+			}
+			fmt.Fprintln(deps.Stdout, "Observability token has been cleared.")
+			return 0
+		case "status":
+			token, err := readObservabilityToken()
+			if err != nil {
+				fmt.Fprintf(deps.Stderr, "could not read observability config: %v\n", err)
+				return 1
+			}
+			if token == "" {
+				fmt.Fprintln(deps.Stdout, "Observability token is not configured.")
+				return 0
+			}
+			fmt.Fprintf(deps.Stdout, "Observability token is configured: %s\n", redactObservabilityToken(token))
+			return 0
+		default:
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability <set|clear|status>")
+			return 2
+		}
+	default:
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s config <telemetry|observability> ...")
+		return 2
+	}
+}
+
+func redactObservabilityToken(token string) string {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return ""
+	}
+	if len(token) <= 12 {
+		return token
+	}
+	return token[:12] + "..."
 }
 
 func runBundle(ctx context.Context, args []string, deps Dependencies) int {
@@ -129,48 +232,48 @@ func runBundle(ctx context.Context, args []string, deps Dependencies) int {
 		extra = []string{"bundle", "info"}
 		extra = append(extra, args[2:]...)
 	}
-	return delegate(ctx, deps, kind, false, extra, nil)
+	return delegate(ctx, deps, kind, false, extra, nil, nil)
 }
 
-func runProfile(ctx context.Context, args []string, deps Dependencies) int {
+func runProfile(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if len(args) == 0 {
 		fmt.Fprintln(deps.Stderr, "Usage: pk3s profile <list|validate> [profile]")
 		return 2
 	}
 	switch args[0] {
 	case "list":
-		return delegate(ctx, deps, "infra", false, []string{"list-profiles"}, nil)
+		return delegate(ctx, deps, "infra", false, []string{"list-profiles"}, nil, newCLITelemetryContext("profile-list", "infra", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
 	case "validate":
 		profile, code := resolveProfileArg(args[1:], deps)
 		if code != 0 {
 			return code
 		}
-		return delegate(ctx, deps, "infra", false, []string{"validate-profile", "--profile", profile}, nil)
+		return delegate(ctx, deps, "infra", false, []string{"validate-profile", "--profile", profile}, nil, newCLITelemetryContext("profile-validate", "infra", true, deps, mustResolveTelemetry(telemetryOverride, deps)))
 	default:
 		fmt.Fprintf(deps.Stderr, "Unsupported profile command: %s\n", args[0])
 		return 2
 	}
 }
 
-func runInfraProfileCommand(ctx context.Context, command string, args []string, deps Dependencies) int {
+func runInfraProfileCommand(ctx context.Context, command string, args []string, deps Dependencies, telemetryOverride *bool) int {
 	profile, code := resolveProfileArg(args, deps)
 	if code != 0 {
 		return code
 	}
-	return delegate(ctx, deps, "infra", false, []string{command, "--profile", profile}, nil)
+	return delegate(ctx, deps, "infra", false, []string{command, "--profile", profile}, nil, newCLITelemetryContext(command, "infra", true, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
-func runDoctor(ctx context.Context, args []string, deps Dependencies) int {
+func runDoctor(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if contains(args, "--core") || len(args) == 0 {
 		if !platform.SupportsCoreHost(deps.GOOS, deps.GOARCH) {
 			return unsupportedCoreHost(deps)
 		}
-		return delegate(ctx, deps, "core", true, []string{"preflight"}, nil)
-	}
-	return delegate(ctx, deps, "infra", false, append([]string{"doctor"}, args...), nil)
+			return delegate(ctx, deps, "core", true, []string{"preflight"}, nil, newCLITelemetryContext("doctor", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+		}
+	return delegate(ctx, deps, "infra", false, append([]string{"doctor"}, args...), nil, newCLITelemetryContext("doctor", "infra", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
-func runInstall(ctx context.Context, args []string, deps Dependencies) int {
+func runInstall(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if !contains(args, "--core-only") {
 		fmt.Fprintln(deps.Stderr, "Only `pk3s install --core-only` is implemented in this release.")
 		return 2
@@ -179,30 +282,39 @@ func runInstall(ctx context.Context, args []string, deps Dependencies) int {
 		return unsupportedCoreHost(deps)
 	}
 	filtered := removeFlag(args, "--core-only")
-	return delegate(ctx, deps, "core", true, append([]string{"bootstrap"}, filtered...), nil)
+	return delegate(ctx, deps, "core", true, append([]string{"bootstrap"}, filtered...), nil, newCLITelemetryContext("install", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
-func runValidate(ctx context.Context, args []string, deps Dependencies) int {
+func runValidate(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if contains(args, "--core") || len(args) == 0 {
 		if !platform.SupportsCoreHost(deps.GOOS, deps.GOARCH) {
 			return unsupportedCoreHost(deps)
 		}
 		filtered := removeFlag(args, "--core")
-		return delegate(ctx, deps, "core", true, append([]string{"validate"}, filtered...), nil)
-	}
+			return delegate(ctx, deps, "core", true, append([]string{"validate"}, filtered...), nil, newCLITelemetryContext("validate", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+		}
 	profile, code := resolveProfileArg(args, deps)
 	if code != 0 {
 		return code
 	}
-	return delegate(ctx, deps, "infra", false, []string{"validate", "--profile", profile}, nil)
+	return delegate(ctx, deps, "infra", false, []string{"validate", "--profile", profile}, nil, newCLITelemetryContext("validate", "infra", true, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
-func runBackup(ctx context.Context, args []string, deps Dependencies) int {
+func runBackup(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if !platform.SupportsCoreHost(deps.GOOS, deps.GOARCH) {
 		return unsupportedCoreHost(deps)
 	}
 	filtered := removeFlag(args, "--core")
-	return delegate(ctx, deps, "core", true, append([]string{"backup"}, filtered...), nil)
+	return delegate(ctx, deps, "core", true, append([]string{"backup"}, filtered...), nil, newCLITelemetryContext("backup", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+}
+
+func mustResolveTelemetry(override *bool, deps Dependencies) bool {
+	enabled, err := resolveTelemetryEnabled(override)
+	if err != nil {
+		fmt.Fprintf(deps.Stderr, "could not resolve telemetry preference: %v\n", err)
+		return false
+	}
+	return enabled
 }
 
 func unsupportedCoreHost(deps Dependencies) int {
@@ -287,7 +399,7 @@ func resolveProfilePath(value string, deps Dependencies) (string, int) {
 	return "", 2
 }
 
-func delegate(ctx context.Context, deps Dependencies, kind string, requiresCoreHost bool, args []string, env map[string]string) int {
+func delegate(ctx context.Context, deps Dependencies, kind string, requiresCoreHost bool, args []string, env map[string]string, telemetry *cliTelemetryContext) int {
 	if requiresCoreHost && !platform.SupportsCoreHost(deps.GOOS, deps.GOARCH) {
 		return unsupportedCoreHost(deps)
 	}
@@ -300,6 +412,11 @@ func delegate(ctx context.Context, deps Dependencies, kind string, requiresCoreH
 	for k, v := range env {
 		extraEnv[k] = v
 	}
+	if telemetry != nil {
+		for k, v := range telemetry.childEnv() {
+			extraEnv[k] = v
+		}
+	}
 	if ref.Source == "remote" {
 		extraEnv["PRODUCTIVE_K3S_SOURCE"] = "remote"
 		extraEnv["PRODUCTIVE_K3S_VERSION"] = bundles.DefaultReleaseManifest().CoreVersion
@@ -307,14 +424,23 @@ func delegate(ctx context.Context, deps Dependencies, kind string, requiresCoreH
 			extraEnv["PRODUCTIVE_K3S_INFRA_VERSION"] = bundles.DefaultReleaseManifest().InfraVersion
 		}
 	}
+	if telemetry != nil {
+		telemetry.send(ctx, deps.HTTPClient, "cli.command.started", "started", deps)
+	}
 	if err := deps.Exec(ctx, Invocation{
 		Path: ref.Entrypoint,
 		Args: args,
 		Dir:  ref.Root,
 		Env:  mergedEnv(extraEnv),
 	}); err != nil {
+		if telemetry != nil {
+			telemetry.send(ctx, deps.HTTPClient, "cli.command.completed", "failed", deps)
+		}
 		fmt.Fprintf(deps.Stderr, "command failed: %v\n", err)
 		return 1
+	}
+	if telemetry != nil {
+		telemetry.send(ctx, deps.HTTPClient, "cli.command.completed", "success", deps)
 	}
 	return 0
 }
@@ -376,9 +502,10 @@ func printRootHelp(w io.Writer) {
 Usage:
   pk3s <command> [flags]
 
-Commands:
+  Commands:
   help
   version
+  config
   doctor
   install
   validate
