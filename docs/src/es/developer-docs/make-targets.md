@@ -2,6 +2,12 @@
 
 El repositorio expone un conjunto pequeño de comandos de desarrollo estables:
 
+Prerrequisitos de desarrollo para estos targets:
+
+- un toolchain funcional de `Go`, disponible en `PATH` o seteado explícitamente con `GO_BIN`
+
+Este requisito es específico de `productive-k3s-cli`, porque este repositorio compila y testea el binario `pk3s` desde fuente. No debe leerse como un prerrequisito transversal para desarrollar `productive-k3s-core` o `productive-k3s-infra`.
+
 ```bash
 make build
 make build-release

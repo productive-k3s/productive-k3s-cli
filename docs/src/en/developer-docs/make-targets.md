@@ -2,6 +2,12 @@
 
 The repository exposes a small set of stable development commands:
 
+Development prerequisites for these targets:
+
+- a working `Go` toolchain available in `PATH` or set explicitly with `GO_BIN`
+
+This requirement is specific to `productive-k3s-cli`, because this repository builds and tests the `pk3s` binary from source. It is not meant as a cross-repository prerequisite for `productive-k3s-core` or `productive-k3s-infra`.
+
 ```bash
 make build
 make build-release

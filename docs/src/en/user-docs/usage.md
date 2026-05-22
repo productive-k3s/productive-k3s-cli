@@ -60,3 +60,20 @@ The current remote baseline is:
 - Productive K3S Infra `0.9.41-0.9.1`
 
 The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public entrypoints.
+
+## Telemetry controls
+
+The CLI can persist your telemetry preference and also override it per command.
+
+Examples:
+
+```bash
+pk3s config telemetry status
+pk3s config telemetry enable
+pk3s config observability set pk3s_live_xxxxx
+pk3s config observability status
+pk3s plan --profile profiles/multipass/1-server-2-agents.env --telemetry disable
+pk3s install --core-only --telemetry enable
+```
+
+When the CLI resolves telemetry to enabled, it propagates the decision plus correlation IDs into delegated Infra or Core runs.

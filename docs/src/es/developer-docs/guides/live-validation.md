@@ -72,6 +72,7 @@ Los manifests incluyen:
 ## Notas
 
 - Estos validadores están separados intencionalmente de `test-static`.
+- También requieren un toolchain local funcional de `Go`, porque `make test-live-remote` compila `pk3s` antes de correr las validaciones live.
 - Requieren dependencias reales como `multipass`, `ssh`, `curl`, `tar` y `python3`.
 - `onprem-basic` no usa `pk3s destroy`, porque ese escenario no expone un contrato público de destroy. La limpieza se hace borrando las VMs temporales.
 - Usá `make test-checkstatus` para inspeccionar los artifacts del CLI.

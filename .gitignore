@@ -18,3 +18,4 @@ docs/src/assets/images/productive-k3s-icon-square-0.3x.png
 docs/src/assets/images/favicon.ico
 pk3s
 dist/
+.wrangler/

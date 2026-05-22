@@ -60,6 +60,20 @@ PRODUCTIVE_K3S_SOURCE=local pk3s profile list
 
 ## Development
 
+Development prerequisites for this repository:
+
+- a working `Go` toolchain available in `PATH` or through `GO_BIN`
+- standard Unix tooling used by the repository scripts and docs flow
+
+`Go` is a development prerequisite for `productive-k3s-cli` itself because local builds, Go tests, and live remote validation build the `pk3s` executable from source.
+It is not a general development prerequisite for `productive-k3s-core` or `productive-k3s-infra`.
+
+If your environment exposes more than one `go` binary, you can force the toolchain explicitly:
+
+```bash
+GO_BIN=/usr/local/go/bin/go make build
+```
+
 Useful commands:
 
 ```bash
