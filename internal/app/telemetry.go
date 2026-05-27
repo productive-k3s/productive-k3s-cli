@@ -29,21 +29,21 @@ type telemetryPreference struct {
 }
 
 type cliTelemetryContext struct {
-	Enabled       bool
-	SessionID     string
-	RunID         string
-	Endpoint      string
-	Marker        string
-	BearerToken   string
-	Command       string
-	Target        string
-	SourceMode    string
-	HasProfile    bool
-	MaxRetries    int
-	ConnectTO     time.Duration
-	RequestTO     time.Duration
-	UserAgent     string
-	WorkingDir    string
+	Enabled     bool
+	SessionID   string
+	RunID       string
+	Endpoint    string
+	Marker      string
+	BearerToken string
+	Command     string
+	Target      string
+	SourceMode  string
+	HasProfile  bool
+	MaxRetries  int
+	ConnectTO   time.Duration
+	RequestTO   time.Duration
+	UserAgent   string
+	WorkingDir  string
 }
 
 func parseTelemetryOverride(args []string, stderr ioWriter) ([]string, *bool, int) {
@@ -297,21 +297,21 @@ func newCLITelemetryContext(command string, target string, hasProfile bool, deps
 		return &cliTelemetryContext{Enabled: false}
 	}
 	return &cliTelemetryContext{
-		Enabled:    true,
-		SessionID:  firstNonEmpty(os.Getenv("TELEMETRY_SESSION_ID"), generateTelemetryID()),
-		RunID:      generateTelemetryID(),
-		Endpoint:   resolveTelemetryEndpoint(),
-		Marker:     resolveTelemetryMarker(),
+		Enabled:     true,
+		SessionID:   firstNonEmpty(os.Getenv("TELEMETRY_SESSION_ID"), generateTelemetryID()),
+		RunID:       generateTelemetryID(),
+		Endpoint:    resolveTelemetryEndpoint(),
+		Marker:      resolveTelemetryMarker(),
 		BearerToken: resolveTelemetryBearerToken(),
-		Command:    command,
-		Target:     target,
-		SourceMode: requestedSourceMode(),
-		HasProfile: hasProfile,
-		MaxRetries: resolveTelemetryInt("TELEMETRY_MAX_RETRIES", 3),
-		ConnectTO:  time.Duration(resolveTelemetryInt("TELEMETRY_CONNECT_TIMEOUT_SECONDS", 5)) * time.Second,
-		RequestTO:  time.Duration(resolveTelemetryInt("TELEMETRY_REQUEST_TIMEOUT_SECONDS", 10)) * time.Second,
-		UserAgent:  fmt.Sprintf("productive-k3s-cli/%s", Version),
-		WorkingDir: deps.WorkingDir,
+		Command:     command,
+		Target:      target,
+		SourceMode:  requestedSourceMode(),
+		HasProfile:  hasProfile,
+		MaxRetries:  resolveTelemetryInt("TELEMETRY_MAX_RETRIES", 3),
+		ConnectTO:   time.Duration(resolveTelemetryInt("TELEMETRY_CONNECT_TIMEOUT_SECONDS", 5)) * time.Second,
+		RequestTO:   time.Duration(resolveTelemetryInt("TELEMETRY_REQUEST_TIMEOUT_SECONDS", 10)) * time.Second,
+		UserAgent:   fmt.Sprintf("productive-k3s-cli/%s", Version),
+		WorkingDir:  deps.WorkingDir,
 	}
 }
 
@@ -384,7 +384,7 @@ func (c *cliTelemetryContext) send(ctx context.Context, client *http.Client, eve
 			"telemetry_enabled": "true",
 		},
 		"telemetry_meta": map[string]any{
-			"delivery_mode":      "best-effort",
+			"delivery_mode":         "best-effort",
 			"anonymous_by_contract": true,
 		},
 	}

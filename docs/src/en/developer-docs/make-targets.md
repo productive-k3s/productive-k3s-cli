@@ -11,7 +11,13 @@ This requirement is specific to `productive-k3s-cli`, because this repository bu
 ```bash
 make build
 make build-release
+make test
 make go-test
+make test-unit
+make test-lint
+make test-format
+make test-spell
+make test-coverage
 make test-static
 make test-cli-contract
 make test-live-gha-onprem-remote

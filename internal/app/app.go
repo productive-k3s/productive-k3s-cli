@@ -23,14 +23,14 @@ import (
 var Version = "1.0.0"
 
 type Dependencies struct {
-	Stdout       io.Writer
-	Stderr       io.Writer
-	GOOS         string
-	GOARCH       string
-	WorkingDir   string
-	CacheDir     string
-	HTTPClient   *http.Client
-	Exec         func(context.Context, Invocation) error
+	Stdout     io.Writer
+	Stderr     io.Writer
+	GOOS       string
+	GOARCH     string
+	WorkingDir string
+	CacheDir   string
+	HTTPClient *http.Client
+	Exec       func(context.Context, Invocation) error
 }
 
 type Invocation struct {
@@ -268,8 +268,8 @@ func runDoctor(ctx context.Context, args []string, deps Dependencies, telemetryO
 		if !platform.SupportsCoreHost(deps.GOOS, deps.GOARCH) {
 			return unsupportedCoreHost(deps)
 		}
-			return delegate(ctx, deps, "core", true, []string{"preflight"}, nil, newCLITelemetryContext("doctor", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
-		}
+		return delegate(ctx, deps, "core", true, []string{"preflight"}, nil, newCLITelemetryContext("doctor", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+	}
 	return delegate(ctx, deps, "infra", false, append([]string{"doctor"}, args...), nil, newCLITelemetryContext("doctor", "infra", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
@@ -291,8 +291,8 @@ func runValidate(ctx context.Context, args []string, deps Dependencies, telemetr
 			return unsupportedCoreHost(deps)
 		}
 		filtered := removeFlag(args, "--core")
-			return delegate(ctx, deps, "core", true, append([]string{"validate"}, filtered...), nil, newCLITelemetryContext("validate", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
-		}
+		return delegate(ctx, deps, "core", true, append([]string{"validate"}, filtered...), nil, newCLITelemetryContext("validate", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+	}
 	profile, code := resolveProfileArg(args, deps)
 	if code != 0 {
 		return code

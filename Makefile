@@ -1,7 +1,11 @@
-.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test test-unit test-lint test-format test-spell test-coverage test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
+ifneq ("$(wildcard /usr/local/go/bin/go)","")
+GO_BIN ?= /usr/local/go/bin/go
+else
 GO_BIN ?= go
+endif
 
 build:
 	$(SCRIPTS_DIR)/build-cli.sh build-local
@@ -11,6 +15,23 @@ build-release:
 
 go-test:
 	$(GO_BIN) test ./...
+
+test: test-unit test-lint test-format test-spell
+
+test-unit:
+	bash ./tests/bin/run-go-tests.sh
+
+test-lint:
+	bash ./tests/bin/run-lint.sh
+
+test-format:
+	bash ./tests/bin/run-format-check.sh
+
+test-spell:
+	bash ./tests/bin/run-spellcheck.sh
+
+test-coverage:
+	bash ./tests/bin/run-coverage.sh
 
 test-static:
 	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-static
