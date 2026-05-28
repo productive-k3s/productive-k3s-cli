@@ -3,7 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GO_BIN="${GO_BIN:-$(command -v go || true)}"
+GO_BIN="${GO_BIN:-}"
+if [[ -z "${GO_BIN}" ]]; then
+  if [[ -x /usr/local/go/bin/go ]]; then
+    GO_BIN="/usr/local/go/bin/go"
+  else
+    GO_BIN="$(command -v go || true)"
+  fi
+fi
 
 usage() {
   cat <<'USAGE'

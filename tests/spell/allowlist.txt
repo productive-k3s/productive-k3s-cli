@@ -1,0 +1,14 @@
+productive
+k3s
+telemetry
+observability
+amd64
+arm64
+localstack
+longhorn
+rancher
+mktemp
+sha256sum
+ubuntu
+debian
+onprem

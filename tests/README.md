@@ -1,125 +1,53 @@
+# Productive K3S CLI Tests
 
-# Productive K3S CLI test contracts
+`productive-k3s-cli` keeps Go tests as the primary unit-test layer and shell contract tests as the orchestration contract layer.
 
-This directory defines the initial TDD-oriented test contracts for the Productive K3S CLI.
+This directory now exposes a normalized local interface aligned with `productive-k3s-core` and `productive-k3s-infra`.
 
-The tests validate the CLI as the user-facing orchestration layer over:
+## Commands
 
-- Productive K3S Core bundles
-- Productive K3S Infra bundles
-- profile-based workflows
-- bundle compatibility metadata
-- CI/CD-friendly JSON artifacts
+```bash
+make test
+make test-unit
+make test-lint
+make test-format
+make test-spell
+make test-coverage
+```
 
-The tests focus on CLI behavior and contracts, not on real cluster creation.
+## Focus
 
-Live validators exist separately for remote-mode end-to-end coverage:
+- Go unit coverage for CLI parsing, telemetry/config helpers, platform gating, bundle resolution, and command dispatch/error paths
+- existing shell contract tests for CLI-to-core/infra delegation
+- shell lint/format checks for helper scripts
+- spell checks for docs, shell scripts, and test content
 
-- `tests/live-cli-multipass-remote.sh`
-- `tests/live-cli-onprem-remote.sh`
+## Current Coverage Baseline
 
-These scripts do create short-lived infrastructure:
+Latest local `make test-coverage` run:
 
-- `multipass`: uses the published remote `productive-k3s-infra` bundle through `pk3s`
-- `onprem-basic`: creates two ephemeral Multipass VMs outside the scenario, writes an `.env`, then drives `pk3s` against that profile
+- total Go coverage: `80.0%`
+- `internal/app`: `80.8%`
+- `internal/bundles`: `77.8%`
+- `internal/platform`: `100.0%`
 
-## Output artifacts
+Treat this as a maintainer baseline for new changes, not as a hard CI gate.
 
-Every contract test writes JSON artifacts under:
+## Layout
 
 ```text
-test-artifacts/
+tests/
+  bin/
+  contracts/
+  fixtures/
+  helpers/
+  lib/
+  spell/
 ```
 
-Expected generated files:
+Generated at runtime and intentionally not tracked:
 
-```text
-test-artifacts/
-├── cli-help-contract.json
-├── cli-version-contract.json
-├── bundle-resolution-contract.json
-├── core-command-mapping-contract.json
-├── infra-command-mapping-contract.json
-├── profile-command-contract.json
-├── error-handling-contract.json
-└── summary.json
-```
+- `tests/artifacts/`
+- `tests/coverage/`
 
-These files can be uploaded by GitHub Actions as workflow artifacts.
-
-Live runs write separate manifests:
-
-```text
-test-artifacts/
-├── cli-live-runs/
-│   ├── <run-id>-multipass.json
-│   ├── <run-id>-multipass.log
-│   ├── <run-id>-onprem-basic.json
-│   └── <run-id>-onprem-basic.log
-├── <run-id>-summary.json
-└── live-summary.json
-```
-
-## Running locally
-
-```bash
-make test-cli-contract
-```
-
-or:
-
-```bash
-./tests/run-cli-contracts.sh
-```
-
-Run the live remote validators:
-
-```bash
-make test-live-remote
-```
-
-Run only one live validator:
-
-```bash
-./tests/run-cli-live.sh multipass
-./tests/run-cli-live.sh onprem-basic
-```
-
-GitHub-host PR validator:
-
-```bash
-make test-live-gha-onprem-remote
-```
-
-Check current artifact status:
-
-```bash
-make test-checkstatus
-TEST_SCOPE=contract make test-checkstatus
-TEST_SCOPE=live make test-checkstatus
-```
-
-Clear local test artifact state:
-
-```bash
-make test-clean
-TEST_SCOPE=contract make test-clean
-TEST_SCOPE=live make test-clean
-```
-
-## CLI binary resolution
-
-By default the tests expect:
-
-```bash
-./pk3s
-```
-
-Override with:
-
-```bash
-PRODUCTIVE_K3S_CLI_BIN=/path/to/pk3s ./tests/run-cli-contracts.sh
-```
-
-If the binary is not available, tests run in contract-definition mode and emit `pending` JSON artifacts.
-This makes the package useful before implementation starts.
+Unlike `core` and `infra`, this repo keeps `tests/fixtures/` because the shell contract layer consumes real bundle/profile/manifests fixtures.
