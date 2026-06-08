@@ -178,7 +178,7 @@ func TestRunInstallCoreOnlyDispatchAndBackupUnsupportedHost(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected install core-only dispatch to succeed, got %d", code)
 	}
-	if strings.Join(got.Args, " ") != "bootstrap --dry-run" {
+	if strings.Join(got.Args, " ") != "apply --dry-run" {
 		t.Fatalf("unexpected install args: %#v", got.Args)
 	}
 

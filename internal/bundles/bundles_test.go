@@ -45,9 +45,11 @@ func TestResolveRemoteBundleDownloadsAndExtracts(t *testing.T) {
 		"productive-k3s-core-0.9.1/bundle-info.json":               "{}\n",
 		"productive-k3s-core-0.9.1/scripts/productive-k3s-core.sh": "#!/usr/bin/env bash\n",
 		"productive-k3s-core-0.9.1/scripts/preflight-host.sh":      "#!/usr/bin/env bash\n",
-		"productive-k3s-core-0.9.1/scripts/bootstrap-k3s-stack.sh": "#!/usr/bin/env bash\n",
-		"productive-k3s-core-0.9.1/scripts/backup-k3s-stack.sh":    "#!/usr/bin/env bash\n",
-		"productive-k3s-core-0.9.1/scripts/validate-k3s-stack.sh":  "#!/usr/bin/env bash\n",
+		"productive-k3s-core-0.9.1/scripts/apply.sh":               "#!/usr/bin/env bash\n",
+		"productive-k3s-core-0.9.1/scripts/backup.sh":              "#!/usr/bin/env bash\n",
+		"productive-k3s-core-0.9.1/scripts/validate.sh":            "#!/usr/bin/env bash\n",
+		"productive-k3s-core-0.9.1/scripts/cleanup.sh":             "#!/usr/bin/env bash\n",
+		"productive-k3s-core-0.9.1/scripts/rollback.sh":            "#!/usr/bin/env bash\n",
 		"productive-k3s-core-0.9.1/scripts/send-telemetry.sh":      "#!/usr/bin/env bash\n",
 	})
 	sum := sha256.Sum256(archiveBytes)
@@ -121,9 +123,11 @@ func TestResolveRemoteCoreBundleRejectsIncompleteRelease(t *testing.T) {
 		"bundle-info.json",
 		"scripts/productive-k3s-core.sh",
 		"scripts/preflight-host.sh",
-		"scripts/bootstrap-k3s-stack.sh",
-		"scripts/backup-k3s-stack.sh",
-		"scripts/validate-k3s-stack.sh",
+		"scripts/apply.sh",
+		"scripts/backup.sh",
+		"scripts/validate.sh",
+		"scripts/cleanup.sh",
+		"scripts/rollback.sh",
 		"scripts/send-telemetry.sh",
 	} {
 		if !strings.Contains(err.Error(), expected) {

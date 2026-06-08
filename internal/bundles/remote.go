@@ -106,9 +106,11 @@ func requiredRemoteBundlePaths(kind string) []string {
 			"bundle-info.json",
 			"scripts/productive-k3s-core.sh",
 			"scripts/preflight-host.sh",
-			"scripts/bootstrap-k3s-stack.sh",
-			"scripts/backup-k3s-stack.sh",
-			"scripts/validate-k3s-stack.sh",
+			"scripts/apply.sh",
+			"scripts/backup.sh",
+			"scripts/validate.sh",
+			"scripts/cleanup.sh",
+			"scripts/rollback.sh",
 			"scripts/send-telemetry.sh",
 		}
 	case "infra":

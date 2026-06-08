@@ -282,7 +282,7 @@ func runInstall(ctx context.Context, args []string, deps Dependencies, telemetry
 		return unsupportedCoreHost(deps)
 	}
 	filtered := removeFlag(args, "--core-only")
-	return delegate(ctx, deps, "core", true, append([]string{"bootstrap"}, filtered...), nil, newCLITelemetryContext("install", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
+	return delegate(ctx, deps, "core", true, append([]string{"apply"}, filtered...), nil, newCLITelemetryContext("install", "core", false, deps, mustResolveTelemetry(telemetryOverride, deps)))
 }
 
 func runValidate(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
@@ -613,7 +613,7 @@ Examples:
   pk3s install --core-only
 
 Notes:
-  This delegates to Productive K3S Core bootstrap on a supported Linux host.
+  This delegates to Productive K3S Core apply on a supported Linux host.
 `,
 		"doctor": `Doctor command
 

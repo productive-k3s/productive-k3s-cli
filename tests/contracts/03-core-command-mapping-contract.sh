@@ -18,7 +18,7 @@ result = {
   "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
   "expected_mappings": {
     "pk3s doctor --core": "./productive-k3s-core.sh preflight",
-    "pk3s install --core-only": "./productive-k3s-core.sh bootstrap",
+    "pk3s install --core-only": "./productive-k3s-core.sh apply",
     "pk3s validate --core": "./productive-k3s-core.sh validate",
     "pk3s backup --core": "./productive-k3s-core.sh backup",
     "pk3s bundle core info --json": "./productive-k3s-core.sh bundle info --json"
