@@ -25,8 +25,8 @@ source "${CONFIG}"
 set +a
 
 assert_eq "${PK3S_CLI_VERSION_DEFAULT}" "1.0.0" "default cli version"
-assert_eq "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "0.9.1" "default core version"
-assert_eq "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT}" "0.9.41-0.9.1" "default infra version"
+assert_eq "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "0.9.4" "default core version"
+assert_eq "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT}" "0.9.62-0.9.4" "default infra version"
 assert_eq "${PRODUCTIVE_K3S_CORE_RELEASE_REPO_DEFAULT}" "jemacchi/productive-k3s-core" "default core release repo"
 assert_eq "${PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT}" "jemacchi/productive-k3s-infra" "default infra release repo"
 

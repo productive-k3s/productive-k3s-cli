@@ -14,7 +14,7 @@ if [[ ! -x "${CLI_BIN}" ]]; then
 fi
 
 output="$("${CLI_BIN}" help || true)"
-for expected in "install" "doctor" "validate" "bundle" "profile" "version"; do
+for expected in "install" "doctor" "validate" "bundle" "profile" "infra" "addon" "version"; do
   grep -q "${expected}" <<< "${output}"
 done
 

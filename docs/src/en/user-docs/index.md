@@ -16,6 +16,7 @@ Start here:
 
 - [Installation](installation.md)
 - [Usage](usage.md)
+- [Quick reference](quick-reference.md)
 - [Privacy and telemetry](privacy-and-telemetry.md)
 - [Profiles](profiles.md)
 - [Troubleshooting](troubleshooting.md)

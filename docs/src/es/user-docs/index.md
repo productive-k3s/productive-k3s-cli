@@ -8,6 +8,7 @@ Empezá por acá:
 
 - [Instalación](installation.md)
 - [Uso](usage.md)
+- [Referencia rápida](referencia-rapida.md)
 - [Privacidad y telemetría](privacy-and-telemetry.md)
 - [Perfiles](profiles.md)
 - [Troubleshooting](troubleshooting.md)

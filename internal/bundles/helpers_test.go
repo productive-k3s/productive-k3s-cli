@@ -34,7 +34,7 @@ func TestDefaultRemoteSpecAndBundleHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DefaultRemoteSpec(core): %v", err)
 	}
-	if coreSpec.ArchiveName != "productive-k3s-core-0.9.1.tar.gz" {
+	if coreSpec.ArchiveName != "productive-k3s-core-0.9.4.tar.gz" {
 		t.Fatalf("unexpected core archive name: %q", coreSpec.ArchiveName)
 	}
 
@@ -44,6 +44,9 @@ func TestDefaultRemoteSpecAndBundleHelpers(t *testing.T) {
 	}
 	if infraSpec.ChecksumURL == "" || !strings.Contains(infraSpec.ChecksumURL, "checksums.txt") {
 		t.Fatalf("unexpected infra checksum url: %q", infraSpec.ChecksumURL)
+	}
+	if infraSpec.ArchiveName != "productive-k3s-infra-0.9.62-0.9.4.tar.gz" {
+		t.Fatalf("unexpected infra archive name: %q", infraSpec.ArchiveName)
 	}
 
 	if _, err := DefaultRemoteSpec("wat"); err == nil {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -33,6 +34,146 @@ func TestRunVersion(t *testing.T) {
 	}
 }
 
+func TestRunBOMJSONIncludesRecursiveBundleDetail(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	infraDir := filepath.Join(workingDir, "productive-k3s-infra")
+	for _, dir := range []string{coreDir, infraDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(infraDir, "productive-k3s-infra.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	code := Run(context.Background(), []string{"bom", "--json"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		RunOutput: func(_ context.Context, invocation Invocation) ([]byte, error) {
+			switch invocation.Path {
+			case filepath.Join(coreDir, "productive-k3s-core.sh"):
+				if got := bytes.Join([][]byte{[]byte(invocation.Args[0]), []byte(invocation.Args[1])}, []byte(" ")); string(got) != "bom --json" {
+					t.Fatalf("unexpected core invocation args: %#v", invocation.Args)
+				}
+				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-core","version":"0.9.4"}}`), nil
+			case filepath.Join(infraDir, "productive-k3s-infra.sh"):
+				if got := bytes.Join([][]byte{[]byte(invocation.Args[0]), []byte(invocation.Args[1])}, []byte(" ")); string(got) != "bom --json" {
+					t.Fatalf("unexpected infra invocation args: %#v", invocation.Args)
+				}
+				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-infra","version":"0.9.62-0.9.4"}}`), nil
+			default:
+				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
+				return nil, nil
+			}
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+
+	var bom map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &bom); err != nil {
+		t.Fatalf("invalid json: %v\n%s", err, stdout.String())
+	}
+	if bom["schema_version"] != "1" {
+		t.Fatalf("unexpected schema_version: %#v", bom["schema_version"])
+	}
+	if bom["bom_type"] != "productive-k3s-cli-bom/v1" {
+		t.Fatalf("unexpected bom_type: %#v", bom["bom_type"])
+	}
+	cli, _ := bom["cli"].(map[string]any)
+	if cli["name"] != "pk3s" {
+		t.Fatalf("unexpected cli name: %#v", cli["name"])
+	}
+	bundles, _ := bom["bundles"].(map[string]any)
+	if bundles["source_mode"] != "local" {
+		t.Fatalf("unexpected source mode: %#v", bundles["source_mode"])
+	}
+	core, _ := bundles["core"].(map[string]any)
+	coreCLI, _ := core["cli"].(map[string]any)
+	if coreCLI["version"] != "0.9.4" {
+		t.Fatalf("unexpected core version: %#v", coreCLI["version"])
+	}
+	infra, _ := bundles["infra"].(map[string]any)
+	infraCLI, _ := infra["cli"].(map[string]any)
+	if infraCLI["version"] != "0.9.62-0.9.4" {
+		t.Fatalf("unexpected infra version: %#v", infraCLI["version"])
+	}
+}
+
+func TestRunBOMJSONFallsBackToBundleInfoWhenBundleBOMIsUnavailable(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	infraDir := filepath.Join(workingDir, "productive-k3s-infra")
+	for _, dir := range []string{coreDir, infraDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(infraDir, "productive-k3s-infra.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	code := Run(context.Background(), []string{"bom", "--json"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		RunOutput: func(_ context.Context, invocation Invocation) ([]byte, error) {
+			switch invocation.Path {
+			case filepath.Join(coreDir, "productive-k3s-core.sh"):
+				if len(invocation.Args) >= 2 && invocation.Args[0] == "bom" {
+					return nil, errors.New("exit status 2")
+				}
+				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-core","bundle_type":"productive-k3s-core","bundle_version":"0.9.4","cli_entrypoint":"productive-k3s-core.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
+			case filepath.Join(infraDir, "productive-k3s-infra.sh"):
+				if len(invocation.Args) >= 2 && invocation.Args[0] == "bom" {
+					return nil, errors.New("exit status 2")
+				}
+				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-infra","bundle_type":"productive-k3s-infra","bundle_version":"0.9.62-0.9.4","cli_entrypoint":"productive-k3s-infra.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
+			default:
+				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
+				return nil, nil
+			}
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+
+	var bom map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &bom); err != nil {
+		t.Fatalf("invalid json: %v\n%s", err, stdout.String())
+	}
+	bundles, _ := bom["bundles"].(map[string]any)
+	core, _ := bundles["core"].(map[string]any)
+	coreCLI, _ := core["cli"].(map[string]any)
+	if coreCLI["name"] != "productive-k3s-core" {
+		t.Fatalf("unexpected fallback core cli name: %#v", coreCLI["name"])
+	}
+	coreBundle, _ := core["bundle"].(map[string]any)
+	if coreBundle["bundle_version"] != "0.9.4" {
+		t.Fatalf("unexpected fallback core bundle version: %#v", coreBundle["bundle_version"])
+	}
+}
+
 func TestRunHelpListsCommands(t *testing.T) {
 	var stdout bytes.Buffer
 
@@ -47,7 +188,7 @@ func TestRunHelpListsCommands(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
 
-	for _, expected := range []string{"install", "doctor", "validate", "bundle", "profile", "version"} {
+	for _, expected := range []string{"install", "doctor", "validate", "bundle", "profile", "infra", "addon", "version", "bom"} {
 		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
 			t.Fatalf("help output missing %q: %s", expected, stdout.String())
 		}
@@ -69,12 +210,70 @@ func TestRunHelpProfileShowsUsageAndExamples(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
 	for _, expected := range []string{
-		"pk3s profile <list|validate>",
+		"pk3s profile <list|show|validate|install>",
 		"pk3s profile list",
-		"pk3s profile validate --profile profiles/multipass/1-server-2-agents.env",
+		"pk3s profile show aws-single-node-basic",
+		"pk3s profile validate --tgz ./multipass-profile.tgz",
+		"pk3s profile install --tgz ./multipass-profile.tgz",
 	} {
 		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
 			t.Fatalf("profile help missing %q: %s", expected, stdout.String())
+		}
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+}
+
+func TestRunHelpInfraShowsUsageAndExamples(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := Run(context.Background(), []string{"help", "infra"}, Dependencies{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	for _, expected := range []string{
+		"pk3s infra <install|plan|apply|destroy|status> --tgz <file|url>",
+		"pk3s infra install --tgz ./aws-single-node-basic.tgz",
+		"pk3s infra status --tgz ./aws-single-node-basic.tgz",
+	} {
+		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
+			t.Fatalf("infra help missing %q: %s", expected, stdout.String())
+		}
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("expected empty stderr, got %q", stderr.String())
+	}
+}
+
+func TestRunHelpAddonShowsUsageAndExamples(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := Run(context.Background(), []string{"help", "addon"}, Dependencies{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	for _, expected := range []string{
+		"pk3s addon list",
+		"pk3s addon validate --tgz ./longhorn-addon.tgz",
+		"pk3s addon install --tgz ./longhorn-addon.tgz --cluster-context default",
+	} {
+		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
+			t.Fatalf("addon help missing %q: %s", expected, stdout.String())
 		}
 	}
 	if stderr.Len() != 0 {
@@ -197,7 +396,7 @@ func TestRunProfileValidateDownloadsHTTPProfileAndDelegates(t *testing.T) {
 	defer server.Close()
 
 	var got Invocation
-	code := Run(context.Background(), []string{"profile", "validate", "--profile", server.URL + "/profile.env"}, Dependencies{
+	code := Run(context.Background(), []string{"profile", "validate", "--profile", server.URL + "/profile.env"}, noTelemetryDeps(t, Dependencies{
 		Stdout:     &bytes.Buffer{},
 		Stderr:     &bytes.Buffer{},
 		GOOS:       "linux",
@@ -209,7 +408,7 @@ func TestRunProfileValidateDownloadsHTTPProfileAndDelegates(t *testing.T) {
 			got = invocation
 			return nil
 		},
-	})
+	}))
 
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
@@ -242,7 +441,7 @@ func TestRunValidateProfileDelegatesToInfraScenarioValidate(t *testing.T) {
 	}
 
 	var got Invocation
-	code := Run(context.Background(), []string{"validate", "--profile", profilePath}, Dependencies{
+	code := Run(context.Background(), []string{"validate", "--profile", profilePath}, noTelemetryDeps(t, Dependencies{
 		Stdout:     &bytes.Buffer{},
 		Stderr:     &bytes.Buffer{},
 		GOOS:       "linux",
@@ -253,7 +452,7 @@ func TestRunValidateProfileDelegatesToInfraScenarioValidate(t *testing.T) {
 			got = invocation
 			return nil
 		},
-	})
+	}))
 
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
@@ -274,7 +473,7 @@ func TestRunProfileValidateRejectsInvalidHTTPProfile(t *testing.T) {
 
 	var stderr bytes.Buffer
 	execCalled := false
-	code := Run(context.Background(), []string{"profile", "validate", "--profile", server.URL + "/profile.env"}, Dependencies{
+	code := Run(context.Background(), []string{"profile", "validate", "--profile", server.URL + "/profile.env"}, noTelemetryDeps(t, Dependencies{
 		Stdout:     &bytes.Buffer{},
 		Stderr:     &stderr,
 		GOOS:       "linux",
@@ -286,7 +485,7 @@ func TestRunProfileValidateRejectsInvalidHTTPProfile(t *testing.T) {
 			execCalled = true
 			return nil
 		},
-	})
+	}))
 
 	if code == 0 {
 		t.Fatalf("expected non-zero exit code")
@@ -433,7 +632,7 @@ func TestRunPlanTelemetryOverridePropagatesCorrelationAndSendsCliEvents(t *testi
 	t.Setenv("TELEMETRY_BEARER_TOKEN", "pk3s_live_testtoken")
 
 	var got Invocation
-	code := Run(context.Background(), []string{"plan", "--profile", profilePath, "--telemetry", "enable"}, Dependencies{
+	code := Run(context.Background(), []string{"apply", "--profile", profilePath, "--telemetry", "enable"}, Dependencies{
 		Stdout:     &bytes.Buffer{},
 		Stderr:     &bytes.Buffer{},
 		GOOS:       "linux",

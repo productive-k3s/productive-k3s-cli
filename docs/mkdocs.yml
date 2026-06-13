@@ -73,6 +73,7 @@ nav:
           - en/user-docs/index.md
           - Installation: en/user-docs/installation.md
           - Usage: en/user-docs/usage.md
+          - Quick reference: en/user-docs/quick-reference.md
           - Privacy and telemetry: en/user-docs/privacy-and-telemetry.md
           - Profiles: en/user-docs/profiles.md
           - Troubleshooting: en/user-docs/troubleshooting.md
@@ -113,6 +114,7 @@ nav:
           - es/user-docs/index.md
           - Instalación: es/user-docs/installation.md
           - Uso: es/user-docs/usage.md
+          - Referencia rápida: es/user-docs/referencia-rapida.md
           - Privacidad y telemetría: es/user-docs/privacy-and-telemetry.md
           - Perfiles: es/user-docs/profiles.md
           - Troubleshooting: es/user-docs/troubleshooting.md

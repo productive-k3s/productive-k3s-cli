@@ -63,8 +63,11 @@ git -C "${infra_seed}" push --quiet origin HEAD "refs/tags/${TARGET_INFRA_VERSIO
 
 assert_contains_file "${WORKTREE}/scripts/release-config.sh" "PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:=${TARGET_CORE_VERSION}"
 assert_contains_file "${WORKTREE}/scripts/release-config.sh" "PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:=${TARGET_INFRA_VERSION}"
+assert_contains_file "${WORKTREE}/README.md" "make set-bundles-versions CORE_VERSION=${TARGET_CORE_VERSION} INFRA_VERSION=${TARGET_INFRA_VERSION}"
 assert_contains_file "${WORKTREE}/internal/bundles/types.go" "CoreVersion:  \"${TARGET_CORE_VERSION}\""
 assert_contains_file "${WORKTREE}/internal/bundles/types.go" "InfraVersion: \"${TARGET_INFRA_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/bundles/helpers_test.go" "productive-k3s-core-${TARGET_CORE_VERSION}.tar.gz"
+assert_contains_file "${WORKTREE}/internal/bundles/helpers_test.go" "productive-k3s-infra-${TARGET_INFRA_VERSION}.tar.gz"
 assert_contains_file "${WORKTREE}/docs/src/en/user-docs/usage.md" "Productive K3S Core \`${TARGET_CORE_VERSION}\`"
 assert_contains_file "${WORKTREE}/docs/src/en/user-docs/usage.md" "Productive K3S Infra \`${TARGET_INFRA_VERSION}\`"
 assert_contains_file "${WORKTREE}/tests/fixtures/manifests/cli-1.0.0.json" "\"bundle_version\": \"${TARGET_CORE_VERSION}\""
@@ -74,5 +77,11 @@ assert_contains_file "${WORKTREE}/tests/fixtures/manifests/cli-1.0.0.json" "\"pa
 assert_contains_file "${WORKTREE}/tests/fixtures/bundles/core/${TARGET_CORE_VERSION}/bundle-info.json" "\"bundle_version\": \"${TARGET_CORE_VERSION}\""
 assert_contains_file "${WORKTREE}/tests/fixtures/bundles/infra/${TARGET_INFRA_VERSION}/bundle-info.json" "\"bundle_version\": \"${TARGET_INFRA_VERSION}\""
 assert_contains_file "${WORKTREE}/tests/fixtures/bundles/infra/${TARGET_INFRA_VERSION}/bundle-info.json" "\"bundle_version\": \"${TARGET_CORE_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/app/app_test.go" "\"name\":\"productive-k3s-core\",\"version\":\"${TARGET_CORE_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/app/app_test.go" "\"name\":\"productive-k3s-infra\",\"version\":\"${TARGET_INFRA_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/app/app_test.go" "coreCLI[\"version\"] != \"${TARGET_CORE_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/app/app_test.go" "infraCLI[\"version\"] != \"${TARGET_INFRA_VERSION}\""
+assert_contains_file "${WORKTREE}/internal/app/app_more_test.go" "version: ${TARGET_INFRA_VERSION}"
+assert_contains_file "${WORKTREE}/tests/test-tag-release.sh" "push --quiet origin HEAD refs/tags/${TARGET_CORE_VERSION}"
 
 printf '[PASS] set-bundles-versions updates cli bundle defaults consistently\n'

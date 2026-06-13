@@ -34,6 +34,7 @@ Manual local install from source tree:
 ```bash
 make build
 ./pk3s version
+./pk3s bom --json
 ```
 
 ## Usage
@@ -42,6 +43,7 @@ Show the main command groups:
 
 ```bash
 pk3s help
+pk3s bom --json
 ```
 
 Force remote bundle resolution:
@@ -50,6 +52,26 @@ Force remote bundle resolution:
 PRODUCTIVE_K3S_SOURCE=remote pk3s bundle core info --json
 PRODUCTIVE_K3S_SOURCE=remote pk3s profile list
 ```
+
+`pk3s profile list` is catalog-backed. It does not delegate to the Infra bundle, which keeps the remote Infra release surface focused on package-first runtime commands.
+
+Catalog-backed package usage:
+
+```bash
+pk3s addon list
+pk3s profile show aws-single-node-basic
+pk3s infra install aws-single-node-basic --env-file ./aws.env
+pk3s addon install nginx --profile aws-single-node-basic
+pk3s addon install nginx --profile multipass-1-server-2-agents --public-host nginx-01.k3s.lab.internal
+```
+
+The embedded `profile.env` inside a distributed `profile.tgz` is treated as a base/defaults file. Using a packaged profile without local overrides only makes sense for self-contained targets such as local host-driven scenarios. For real installations, especially cloud and on-prem targets, pass installation-specific values from the invoking machine through `--env-file`.
+
+When the catalog declares that a profile requires local overrides, `pk3s` now fails early before runtime if `--env-file` is missing. Use `pk3s profile show <name>` to inspect the install inputs summary exposed by the catalog.
+
+`pk3s` only prepares command-level telemetry for mutating workflows such as `install`, `profile install`, `infra install`, `infra apply`, `infra destroy`, `apply`, `destroy`, and `addon install`. Read-only commands such as `help`, `version`, `bom --json`, `bundle info --json`, `profile list`, `profile show`, `profile validate`, `infra plan`, `infra status`, `addon list`, and `addon validate` do not prompt for telemetry or emit command-level events.
+
+For add-ons, `--public-host` is intentionally narrow. It only covers the basic Core-managed ingress case for add-ons that declare that support in metadata. Richer ingress behavior remains an add-on concern rather than a generic `pk3s` or Core feature.
 
 Force local sibling resolution:
 
@@ -83,7 +105,7 @@ make build
 make test-cli-contract
 make docs-build
 make docs-publish-check
-make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.3-0.9.1
+make set-bundles-versions CORE_VERSION=0.9.4 INFRA_VERSION=0.9.62-0.9.4
 make tag-release VERSION=1.0.1
 ```
 

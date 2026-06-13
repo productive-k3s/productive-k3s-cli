@@ -53,6 +53,9 @@ scenario_script() {
     multipass)
       printf '%s/tests/live-cli-multipass-remote.sh\n' "${ROOT_DIR}"
       ;;
+    catalog-multipass)
+      printf '%s/tests/live-cli-catalog-multipass.sh\n' "${ROOT_DIR}"
+      ;;
     onprem-basic)
       printf '%s/tests/live-cli-onprem-remote.sh\n' "${ROOT_DIR}"
       ;;
@@ -65,6 +68,9 @@ scenario_script() {
 scenario_environment() {
   case "$1" in
     multipass)
+      printf 'vm\n'
+      ;;
+    catalog-multipass)
       printf 'vm\n'
       ;;
     onprem-basic)
@@ -81,6 +87,9 @@ scenario_topology() {
     multipass)
       printf 'three-node\n'
       ;;
+    catalog-multipass)
+      printf 'three-node\n'
+      ;;
     onprem-basic)
       printf 'server-agent\n'
       ;;
@@ -93,6 +102,9 @@ scenario_topology() {
 scenario_node_count() {
   case "$1" in
     multipass)
+      printf '3\n'
+      ;;
+    catalog-multipass)
       printf '3\n'
       ;;
     onprem-basic)

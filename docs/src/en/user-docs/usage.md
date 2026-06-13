@@ -2,6 +2,8 @@
 
 ## Resolution modes
 
+If you want a short copy-paste oriented command list instead of this explanatory page, use [Quick reference](quick-reference.md).
+
 The CLI supports two bundle resolution modes:
 
 - `local`: only use sibling repositories on disk
@@ -56,8 +58,8 @@ These commands delegate to Productive K3S Infra.
 
 The current remote baseline is:
 
-- Productive K3S Core `0.9.1`
-- Productive K3S Infra `0.9.41-0.9.1`
+- Productive K3S Core `0.9.4`
+- Productive K3S Infra `0.9.62-0.9.4`
 
 The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public entrypoints.
 

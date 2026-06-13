@@ -21,6 +21,8 @@ result = {
     "pk3s install --core-only": "./productive-k3s-core.sh apply",
     "pk3s validate --core": "./productive-k3s-core.sh validate",
     "pk3s backup --core": "./productive-k3s-core.sh backup",
+    "pk3s addon validate --tgz ./demo-addon.tgz": "./productive-k3s-core.sh addon validate --tgz <file>",
+    "pk3s addon install --tgz ./demo-addon.tgz": "./productive-k3s-core.sh addon install --tgz <file>",
     "pk3s bundle core info --json": "./productive-k3s-core.sh bundle info --json"
   }
 }

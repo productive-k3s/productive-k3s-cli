@@ -1,4 +1,4 @@
-.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test test-unit test-lint test-format test-spell test-coverage test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test test-unit test-lint test-format test-spell test-coverage test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-catalog test-live-gha-onprem-remote set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
 ifneq ("$(wildcard /usr/local/go/bin/go)","")
@@ -8,10 +8,10 @@ GO_BIN ?= go
 endif
 
 build:
-	$(SCRIPTS_DIR)/build-cli.sh build-local
+	GO_BIN=$(GO_BIN) $(SCRIPTS_DIR)/build-cli.sh build-local
 
 build-release:
-	$(SCRIPTS_DIR)/build-cli.sh build-release
+	GO_BIN=$(GO_BIN) $(SCRIPTS_DIR)/build-cli.sh build-release
 
 go-test:
 	$(GO_BIN) test ./...
@@ -68,6 +68,10 @@ test-cli-contract:
 test-live-remote:
 	$(MAKE) build
 	bash ./tests/run-cli-live.sh $(SCENARIOS)
+
+test-live-catalog:
+	$(MAKE) build
+	bash ./tests/run-cli-live.sh catalog-multipass
 
 test-live-gha-onprem-remote:
 	$(MAKE) build

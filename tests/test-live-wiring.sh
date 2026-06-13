@@ -21,17 +21,21 @@ assert_executable() {
 }
 
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-live-remote"
+assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-live-catalog"
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-live-gha-onprem-remote"
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-clean"
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-checkstatus"
 assert_contains "${ROOT_DIR}/Makefile" "test-live-remote"
+assert_contains "${ROOT_DIR}/Makefile" "test-live-catalog"
 assert_contains "${ROOT_DIR}/Makefile" "test-live-gha-onprem-remote"
 assert_contains "${ROOT_DIR}/Makefile" "test-clean"
 assert_contains "${ROOT_DIR}/Makefile" "test-checkstatus"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "multipass"
+assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "catalog-multipass"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "onprem-basic"
 
 assert_executable "${ROOT_DIR}/tests/run-cli-live.sh"
+assert_executable "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-multipass-remote.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-onprem-remote.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh"

@@ -1,5 +1,7 @@
 # Uso
 
+Si buscas una lista corta de comandos para copiar y pegar, usa [Referencia rápida](referencia-rapida.md).
+
 Modos de resolución:
 
 - `local`

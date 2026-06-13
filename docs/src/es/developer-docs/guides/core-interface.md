@@ -20,8 +20,8 @@ La interfaz pública actual de Core incluye:
 ./productive-k3s-core.sh bundle info --json
 ./productive-k3s-core.sh preflight
 ./productive-k3s-core.sh preflight --strict
-./productive-k3s-core.sh bootstrap
-./productive-k3s-core.sh bootstrap --dry-run
+./productive-k3s-core.sh apply
+./productive-k3s-core.sh apply --dry-run
 ./productive-k3s-core.sh backup
 ./productive-k3s-core.sh validate
 ./productive-k3s-core.sh validate --strict
@@ -36,6 +36,6 @@ Ejemplos:
 | Comando CLI | Delegación Core |
 | --- | --- |
 | `pk3s doctor` | `productive-k3s-core.sh preflight` más chequeos de Infra |
-| `pk3s install` | `productive-k3s-core.sh bootstrap` más workflow opcional de Infra |
+| `pk3s install` | `productive-k3s-core.sh apply` más workflow opcional de Infra |
 | `pk3s validate` | `productive-k3s-core.sh validate` más validación opcional de Infra |
 | `pk3s bundle info` | `productive-k3s-core.sh bundle info --json` |
