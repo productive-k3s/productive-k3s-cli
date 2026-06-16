@@ -35,6 +35,9 @@ Rules:
 
 ## Documentation and Release
 
+- `Centralize GitHub Owner and Artifact Sources`
+  `Replace hardcoded jemacchi release/raw URLs with repo-local config in scripts/release-config.sh, internal/bundles/types.go, internal/install/install.sh, tests/live-cli-multipass-remote.sh, README.md, and docs/.`
+
 - `Document Stack Artifact Usage`
   `Update user and developer docs so stack installation examples reflect published stack artifacts and current catalog-backed workflows.`
 
