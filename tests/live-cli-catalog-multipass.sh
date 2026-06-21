@@ -18,7 +18,11 @@ need_cmd() {
 }
 
 run_pk3s() {
-  PK3S_CATALOG_URLS="${CATALOG_URLS}" PRODUCTIVE_K3S_SOURCE=remote "${PK3S_BIN}" "$@"
+  local source_mode="remote"
+  if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+    source_mode="local"
+  fi
+  PK3S_CATALOG_URLS="${CATALOG_URLS}" PRODUCTIVE_K3S_SOURCE="${source_mode}" "${PK3S_BIN}" "$@"
 }
 
 run_with_timeout() {

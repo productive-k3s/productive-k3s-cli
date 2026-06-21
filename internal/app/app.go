@@ -889,7 +889,7 @@ func resolveBundle(ctx context.Context, deps Dependencies, kind string) (bundles
 	source := requestedSourceMode()
 	switch source {
 	case "local":
-		return bundles.ResolveLocalSibling(kind, deps.WorkingDir)
+		return bundles.ResolveLocalBundle(kind, deps.WorkingDir, deps.CacheDir)
 	case "remote":
 		spec, err := bundles.DefaultRemoteSpec(kind)
 		if err != nil {

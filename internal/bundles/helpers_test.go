@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -85,6 +86,51 @@ func TestResolveLocalSiblingUsesParentCandidateAndFailsCleanly(t *testing.T) {
 
 	if _, err := ResolveLocalSibling("infra", t.TempDir()); err == nil {
 		t.Fatalf("expected missing local sibling to fail")
+	}
+}
+
+func TestResolveLocalBundleUsesExplicitRepoDir(t *testing.T) {
+	repoDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repoDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_DIR", repoDir)
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_URL", "")
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_REF", "")
+
+	ref, err := ResolveLocalBundle("core", t.TempDir(), t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLocalBundle explicit dir: %v", err)
+	}
+	if ref.Root != repoDir {
+		t.Fatalf("unexpected root: %q", ref.Root)
+	}
+}
+
+func TestResolveLocalBundleClonesRepoOverride(t *testing.T) {
+	originDir := t.TempDir()
+	runGit(t, originDir, "init", "-b", "development")
+	runGit(t, originDir, "config", "user.email", "test@example.com")
+	runGit(t, originDir, "config", "user.name", "Test User")
+	if err := os.WriteFile(filepath.Join(originDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, originDir, "add", "productive-k3s-core.sh")
+	runGit(t, originDir, "commit", "-m", "seed")
+
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_DIR", "")
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_URL", originDir)
+	t.Setenv("PRODUCTIVE_K3S_CORE_REPO_REF", "development")
+
+	ref, err := ResolveLocalBundle("core", t.TempDir(), t.TempDir())
+	if err != nil {
+		t.Fatalf("ResolveLocalBundle repo override: %v", err)
+	}
+	if ref.Root == originDir {
+		t.Fatalf("expected cloned repo, got original dir %q", ref.Root)
+	}
+	if _, err := os.Stat(filepath.Join(ref.Root, "productive-k3s-core.sh")); err != nil {
+		t.Fatalf("expected cloned entrypoint to exist: %v", err)
 	}
 }
 
@@ -168,4 +214,14 @@ func buildTarGzBytes(t *testing.T, files map[string]string) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v failed: %v: %s", args, err, strings.TrimSpace(string(out)))
+	}
 }
