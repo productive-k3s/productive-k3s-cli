@@ -7,7 +7,7 @@ else
 GO_BIN ?= go
 endif
 
-.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-gha-onprem-remote test-checkstatus test-clean
+.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-gha-onprem-remote test-checkstatus test-clean test-clean-all
 
 test-local-all:
 	GO_BIN="$(GO_BIN)" bash $(DEV_WRAPPER) test-local-all
@@ -63,3 +63,6 @@ test-checkstatus:
 
 test-clean:
 	bash $(DEV_WRAPPER) test-clean
+
+test-clean-all:
+	bash $(DEV_WRAPPER) test-clean-all

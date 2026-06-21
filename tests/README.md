@@ -10,6 +10,7 @@ This directory now exposes a normalized local interface aligned with `productive
 make test-local-all
 make test-live-remote
 make test-live-catalog
+make test-clean-all
 make docs-build
 make docs-serve
 ```
@@ -28,6 +29,7 @@ make -C tests test-cli-contract
 make -C tests test-live-gha-onprem-remote
 make -C tests test-checkstatus
 make -C tests test-clean
+make -C tests test-clean-all
 ```
 
 ## Focus

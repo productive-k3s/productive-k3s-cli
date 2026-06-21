@@ -19,6 +19,7 @@ Development commands:
   docs-publish-check
   test-local-all
   test-clean
+  test-clean-all
   test-checkstatus
   test-live-remote
   test-live-catalog
@@ -65,6 +66,9 @@ case "$COMMAND" in
     ;;
   test-clean)
     exec bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
+    ;;
+  test-clean-all)
+    exec env TEST_SCOPE=all bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
     ;;
   test-checkstatus)
     exec bash "${REPO_DIR}/tests/check-test-status.sh" "$@"

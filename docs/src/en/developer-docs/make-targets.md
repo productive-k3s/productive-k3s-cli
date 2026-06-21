@@ -15,6 +15,7 @@ make go-test
 make test-local-all
 make test-live-remote
 make test-live-catalog
+make test-clean-all
 make docs-build
 make docs-serve
 make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.41-0.9.1

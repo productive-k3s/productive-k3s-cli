@@ -168,6 +168,8 @@ skips=()
 fails=()
 
 mkdir -p "${ARTIFACTS_DIR}" "${RUNS_DIR}"
+find "${RUNS_DIR}" -maxdepth 1 -type f \( -name '*.json' -o -name '*.log' \) -delete 2>/dev/null || true
+rm -f "${ARTIFACTS_DIR}/live-summary.json"
 set -a
 # shellcheck disable=SC1090
 source "${ROOT_DIR}/scripts/release-config.sh"

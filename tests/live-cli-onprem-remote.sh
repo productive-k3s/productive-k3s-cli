@@ -107,6 +107,18 @@ wait_for_ssh() {
   fail "ssh did not become ready for ${ip}"
 }
 
+wait_for_cloud_init() {
+  local name="$1"
+  local attempt
+  for attempt in $(seq 1 60); do
+    if multipass exec "${name}" -- cloud-init status --wait >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 5
+  done
+  fail "cloud-init did not finish for ${name}"
+}
+
 run_pk3s() {
   local source_mode="remote"
   if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
@@ -149,6 +161,8 @@ SERVER_IP="$(instance_ip "${SERVER_NAME}")"
 AGENT_IP="$(instance_ip "${AGENT_NAME}")"
 [[ -n "${SERVER_IP}" && -n "${AGENT_IP}" ]] || fail "could not determine VM IPs"
 
+wait_for_cloud_init "${SERVER_NAME}"
+wait_for_cloud_init "${AGENT_NAME}"
 wait_for_ssh "${SERVER_IP}"
 wait_for_ssh "${AGENT_IP}"
 

@@ -1,4 +1,4 @@
-.PHONY: build build-release go-test docs-build docs-serve test-local-all test-cli-contract test-live-remote test-live-catalog test-live-gha-onprem-remote set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve test-local-all test-cli-contract test-live-remote test-live-catalog test-live-gha-onprem-remote test-clean-all set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
 GO_BIN ?= go
@@ -33,6 +33,9 @@ test-live-catalog:
 
 test-live-gha-onprem-remote:
 	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-live-gha-onprem-remote
+
+test-clean-all:
+	$(MAKE) -C ./tests test-clean-all
 
 set-bundles-versions:
 	$(SCRIPTS_DIR)/set-bundles-versions.sh $(CORE_VERSION) $(INFRA_VERSION)
