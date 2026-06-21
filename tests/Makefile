@@ -40,7 +40,7 @@ test-static-raw:
 	bash ./test-tag-release.sh
 	bash ./test-live-artifacts.sh
 	bash ./test-live-wiring.sh
-	bash ./run-cli-contracts.sh
+	$(MAKE) test-cli-contract
 
 test-cli-contract:
 	$(MAKE) -C .. build
