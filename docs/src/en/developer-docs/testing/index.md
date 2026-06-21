@@ -13,16 +13,16 @@ For the live layer, the supported scenarios are:
 Typical commands:
 
 ```bash
-make test
-make test-unit
-make test-lint
-make test-format
-make test-spell
-make test-coverage
-make test-static
+make test-local-all
 make test-live-remote
-./tests/run-cli-live.sh multipass
-./tests/run-cli-live.sh onprem-basic
+make test-live-catalog
+make -C tests test-unit
+make -C tests test-lint
+make -C tests test-format
+make -C tests test-spell
+make -C tests test-coverage
+make -C tests test-live-remote SCENARIOS=multipass
+make -C tests test-live-remote SCENARIOS=onprem-basic
 ```
 
 Live manifests are written under `test-artifacts/cli-live-runs/`, and each invocation also emits:
@@ -33,10 +33,10 @@ Live manifests are written under `test-artifacts/cli-live-runs/`, and each invoc
 The helper targets match the Infra/Core repos:
 
 ```bash
-make test-checkstatus
-make test-clean
-TEST_SCOPE=live make test-checkstatus
-TEST_SCOPE=contract make test-clean
+make -C tests test-checkstatus
+make -C tests test-clean
+TEST_SCOPE=live make -C tests test-checkstatus
+TEST_SCOPE=contract make -C tests test-clean
 ```
 
 ## Local prerequisites
@@ -72,7 +72,7 @@ On this machine, `/usr/local/go/bin/go` is preferred over the broken snap-provid
 
 ## Current local coverage baseline
 
-The current maintainer baseline from the latest local `make test-coverage` run is:
+The current maintainer baseline from the latest local `make -C tests test-coverage` run is:
 
 - total Go coverage: `80.0%`
 - `internal/app`: `80.8%`

@@ -75,7 +75,7 @@ El default de Infra siempre debe permanecer atado al default de Core. Eso implic
 Cuando el CLI necesita pasar a una nueva baseline de Core/Infra:
 
 1. ejecutar `make set-bundles-versions CORE_VERSION=A.B.C INFRA_VERSION=X.Y.Z-A.B.C`
-2. ejecutar `make test-static`
+2. ejecutar `make test-local-all`
 3. crear el siguiente tag del CLI con `make tag-release VERSION=K.L.M`
 4. pushear el tag semántico resultante con `git push origin K.L.M`
 

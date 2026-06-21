@@ -24,9 +24,9 @@ Development commands:
   docs-down
   docs-clean
   docs-publish-check
+  test-local-all
   test-clean
   test-checkstatus
-  test-static
   test-live-remote
   test-live-catalog
   test-live-gha-onprem-remote
@@ -67,24 +67,14 @@ case "$COMMAND" in
     bash "${REPO_DIR}/tests/test-docs-publishing.sh"
     exec bash "${REPO_DIR}/tests/test-docs-structure.sh" "$@"
     ;;
+  test-local-all)
+    exec env GO_BIN="${GO_BIN}" make -C "${REPO_DIR}/tests" test-static-raw
+    ;;
   test-clean)
     exec bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
     ;;
   test-checkstatus)
     exec bash "${REPO_DIR}/tests/check-test-status.sh" "$@"
-    ;;
-  test-static)
-    need_cmd "${GO_BIN}"
-    "${GO_BIN}" test ./...
-    bash "${REPO_DIR}/tests/test-go-tooling.sh"
-    bash "${REPO_DIR}/tests/test-docs-publishing.sh"
-    bash "${REPO_DIR}/tests/test-docs-structure.sh"
-    bash "${REPO_DIR}/tests/test-release-versioning.sh"
-    bash "${REPO_DIR}/tests/test-set-bundles-versions.sh"
-    bash "${REPO_DIR}/tests/test-tag-release.sh"
-    bash "${REPO_DIR}/tests/test-live-artifacts.sh"
-    bash "${REPO_DIR}/tests/test-live-wiring.sh"
-    exec bash "${REPO_DIR}/tests/run-cli-contracts.sh"
     ;;
   test-live-remote)
     exec bash "${REPO_DIR}/tests/run-cli-live.sh" "$@"

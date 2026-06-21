@@ -75,7 +75,7 @@ The Infra default must always stay bound to the Core default, which means the su
 When the CLI needs to move to a new Core/Infra baseline:
 
 1. run `make set-bundles-versions CORE_VERSION=A.B.C INFRA_VERSION=X.Y.Z-A.B.C`
-2. run `make test-static`
+2. run `make test-local-all`
 3. create the next CLI tag with `make tag-release VERSION=K.L.M`
 4. push the resulting semantic tag with `git push origin K.L.M`
 
