@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/release-config.sh"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-onprem-remote-github-host.XXXXXX")"
 ARTIFACT_DIR="${ROOT_DIR}/test-artifacts/live-onprem-remote-github-host"
 ENV_FILE="${WORK_DIR}/onprem-remote.env"

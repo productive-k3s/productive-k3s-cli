@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/release-config.sh"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-onprem-remote.XXXXXX")"
 STAMP="$(date +%Y%m%d%H%M%S)"
 SERVER_NAME="pk3s-cli-onprem-server-${STAMP}"
@@ -113,7 +115,7 @@ run_pk3s() {
   local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-}"
   local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-}"
   if [[ "${source_mode}" == "local" && -z "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" && -z "${profiles_repo_url}" ]]; then
-    profiles_repo_url="https://github.com/jemacchi/productive-k3s-profiles.git"
+    profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}"
     profiles_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \

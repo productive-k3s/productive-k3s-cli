@@ -25,8 +25,6 @@ import (
 
 var Version = "1.0.0"
 
-const defaultCatalogURL = "https://catalogs.productive-k3s.io/catalogs/index.yaml"
-
 type Dependencies struct {
 	Stdout     io.Writer
 	Stderr     io.Writer
@@ -285,7 +283,7 @@ func runBOM(ctx context.Context, args []string, deps Dependencies) int {
 			"goarch":     deps.GOARCH,
 		},
 		"catalog": map[string]any{
-			"default_url":    defaultCatalogURL,
+			"default_url":    bundles.CatalogURLDefault(),
 			"configured_urls": configuredCatalogs,
 		},
 		"bundles": map[string]any{
@@ -1572,7 +1570,7 @@ func rewriteKubeconfigServer(content string, serverURL string) string {
 func catalogURLsFromEnv() []string {
 	raw := strings.TrimSpace(os.Getenv("PK3S_CATALOG_URLS"))
 	if raw == "" {
-		return []string{defaultCatalogURL}
+		return []string{bundles.CatalogURLDefault()}
 	}
 	parts := strings.Split(raw, ",")
 	result := make([]string, 0, len(parts))

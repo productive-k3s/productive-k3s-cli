@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
-CATALOG_URLS="${PK3S_CATALOG_URLS:-https://catalogs.productive-k3s.io/catalogs/index.yaml}"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/release-config.sh"
+CATALOG_URLS="${PK3S_CATALOG_URLS:-${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}}"
 PROFILE_NAME="${PK3S_CLI_CATALOG_PROFILE_NAME:-multipass-1-server-2-agents}"
 ADDON_NAME="${PK3S_CLI_CATALOG_ADDON_NAME:-nginx}"
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"

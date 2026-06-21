@@ -40,7 +40,8 @@ func DefaultRemoteSpec(kind string) (RemoteSpec, error) {
 	case "core":
 		version := manifest.CoreVersion
 		archiveName := fmt.Sprintf("productive-k3s-core-%s.tar.gz", version)
-		baseURL := fmt.Sprintf("https://github.com/jemacchi/productive-k3s-core/releases/download/%s", version)
+		repoName, _ := RepoNameDefault(kind)
+		baseURL := fmt.Sprintf("%s/%s/releases/download/%s", GitHubBaseURLDefault(), repoName, version)
 		return RemoteSpec{
 			Kind:        "core",
 			Version:     version,
@@ -52,7 +53,8 @@ func DefaultRemoteSpec(kind string) (RemoteSpec, error) {
 	case "infra":
 		version := manifest.InfraVersion
 		archiveName := fmt.Sprintf("productive-k3s-infra-%s.tar.gz", version)
-		baseURL := fmt.Sprintf("https://github.com/jemacchi/productive-k3s-infra/releases/download/%s", version)
+		repoName, _ := RepoNameDefault(kind)
+		baseURL := fmt.Sprintf("%s/%s/releases/download/%s", GitHubBaseURLDefault(), repoName, version)
 		return RemoteSpec{
 			Kind:        "infra",
 			Version:     version,

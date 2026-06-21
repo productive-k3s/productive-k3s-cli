@@ -136,11 +136,16 @@ func localBundleEnvNames(kind string) (dirVar, urlVar, refVar string, err error)
 }
 
 func DefaultGitRemoteURL(kind string) string {
-	repo, err := LocalRepoName(kind)
+	repo, err := RepoNameDefault(kind)
 	if err != nil {
 		return ""
 	}
-	return "https://github.com/jemacchi/" + repo + ".git"
+	switch kind {
+	case "profiles":
+		return ProfilesGitRemoteURLDefault()
+	default:
+		return fmt.Sprintf("%s/%s.git", GitHubBaseURLDefault(), repo)
+	}
 }
 
 func localCloneCacheDir(cacheDir, kind, repoURL, repoRef string) string {

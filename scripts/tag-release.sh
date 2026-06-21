@@ -49,8 +49,8 @@ if [[ "${infra_core}" != "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" ]]; then
   exit 1
 fi
 
-core_remote_url="${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL:-https://github.com/${PRODUCTIVE_K3S_CORE_RELEASE_REPO_DEFAULT}.git}"
-infra_remote_url="${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL:-https://github.com/${PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT}.git}"
+core_remote_url="${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL:-${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL_DEFAULT:-https://github.com/${PRODUCTIVE_K3S_CORE_RELEASE_REPO_DEFAULT}.git}}"
+infra_remote_url="${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL:-${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT:-https://github.com/${PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT}.git}}"
 
 core_refs="$(git ls-remote --tags "${core_remote_url}" "refs/tags/${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "refs/tags/v${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" || true)"
 if [[ -z "${core_refs}" ]]; then

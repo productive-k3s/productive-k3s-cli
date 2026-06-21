@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
-PROFILE_URL="${PK3S_CLI_MULTIPASS_PROFILE_URL:-https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env}"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/scripts/release-config.sh"
+PROFILE_URL="${PK3S_CLI_MULTIPASS_PROFILE_URL:-${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}}"
 PROFILE_NAME="${PK3S_CLI_MULTIPASS_PROFILE_NAME:-multipass-1-server-2-agents}"
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
 

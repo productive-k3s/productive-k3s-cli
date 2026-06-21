@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/jemacchi/productive-k3s-cli/internal/bundles"
 )
 
 func TestReadOnlyCommandsDoNotPropagateTelemetryContext(t *testing.T) {
@@ -1440,7 +1442,7 @@ func TestRunAddonListUsesDefaultCatalogURLWhenEnvUnset(t *testing.T) {
 		CacheDir:   filepath.Join(workingDir, "cache"),
 		HTTPClient: &http.Client{
 			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-				if req.URL.String() != defaultCatalogURL {
+				if req.URL.String() != bundles.CatalogURLDefault() {
 					t.Fatalf("expected default catalog URL, got %s", req.URL.String())
 				}
 				return &http.Response{
