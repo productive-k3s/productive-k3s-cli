@@ -39,7 +39,7 @@ assert_eq "${PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT}" "jemacchi/productive-k3
 assert_eq "${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL_DEFAULT}" "https://github.com/jemacchi/productive-k3s-core.git" "default core git remote url"
 assert_eq "${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT}" "https://github.com/jemacchi/productive-k3s-infra.git" "default infra git remote url"
 assert_eq "${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}" "https://github.com/jemacchi/productive-k3s-profiles.git" "default profiles git remote url"
-assert_eq "${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}" "https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env" "default multipass profile url"
+assert_eq "${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}" "https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/local/multipass/1-server-2-agents.env" "default multipass profile url"
 assert_eq "${PRODUCTIVE_K3S_CLI_REPO_DEFAULT}" "jemacchi/productive-k3s-cli" "default cli release repo"
 assert_eq "${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}" "https://catalogs.productive-k3s.io/catalogs/index.yaml" "default catalog url"
 

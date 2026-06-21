@@ -67,6 +67,10 @@ func ProfilesRawURLDefault(path, ref string) string {
 	return fmt.Sprintf("%s/%s/%s/%s", GitHubRawBaseURLDefault(), repoName, ref, strings.TrimPrefix(path, "/"))
 }
 
+func MultipassProfileURLDefault() string {
+	return envOrDefault("PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT", ProfilesRawURLDefault("profiles/local/multipass/1-server-2-agents.env", "main"))
+}
+
 func CatalogURLDefault() string {
 	return envOrDefault("PRODUCTIVE_K3S_CATALOG_URL_DEFAULT", "https://catalogs.productive-k3s.io/catalogs/index.yaml")
 }

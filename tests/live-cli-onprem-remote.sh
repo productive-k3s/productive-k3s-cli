@@ -10,6 +10,7 @@ STAMP="$(date +%Y%m%d%H%M%S)"
 SERVER_NAME="pk3s-cli-onprem-server-${STAMP}"
 AGENT_NAME="pk3s-cli-onprem-agent-${STAMP}"
 ENV_FILE="${WORK_DIR}/onprem-remote.env"
+PROFILES_REPO_DIR=""
 SSH_KEY_PATH=""
 SSH_PUBKEY=""
 MULTIPASS_LAUNCH_RETRIES="${MULTIPASS_LAUNCH_RETRIES:-3}"
@@ -26,6 +27,18 @@ warn() {
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+}
+
+prepare_profiles_repo_dir() {
+  [[ -n "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" ]] && return 0
+  [[ -n "${PROFILES_REPO_DIR}" ]] && return 0
+
+  local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}}"
+  local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}}"
+  PROFILES_REPO_DIR="${WORK_DIR}/productive-k3s-profiles"
+  git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
+    fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
+  }
 }
 
 pick_ssh_key() {
@@ -124,15 +137,11 @@ run_pk3s() {
   if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
     source_mode="local"
   fi
-  local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-}"
-  local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-}"
-  if [[ "${source_mode}" == "local" && -z "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" && -z "${profiles_repo_url}" ]]; then
-    profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}"
-    profiles_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
+  if [[ "${source_mode}" == "local" ]]; then
+    prepare_profiles_repo_dir
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \
-    PRODUCTIVE_K3S_PROFILES_REPO_URL="${profiles_repo_url}" \
-    PRODUCTIVE_K3S_PROFILES_REPO_REF="${profiles_repo_ref}" \
+    PRODUCTIVE_K3S_PROFILES_REPO_DIR="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}" \
     "${PK3S_BIN}" "$@"
 }
 
@@ -148,6 +157,7 @@ need_cmd ssh
 need_cmd curl
 need_cmd tar
 need_cmd python3
+need_cmd git
 [[ -x "${PK3S_BIN}" ]] || fail "pk3s binary is not executable: ${PK3S_BIN}"
 pick_ssh_key
 trap cleanup EXIT
