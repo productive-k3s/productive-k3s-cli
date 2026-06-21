@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
 PROFILE_URL="${PK3S_CLI_MULTIPASS_PROFILE_URL:-https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env}"
+PROFILE_NAME="${PK3S_CLI_MULTIPASS_PROFILE_NAME:-multipass-1-server-2-agents}"
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
 
 fail() {
@@ -23,6 +24,14 @@ run_pk3s() {
   PRODUCTIVE_K3S_SOURCE="${source_mode}" "${PK3S_BIN}" "$@"
 }
 
+profile_target() {
+  if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+    printf '%s\n' "${PROFILE_NAME}"
+  else
+    printf '%s\n' "${PROFILE_URL}"
+  fi
+}
+
 fallback_cleanup() {
   multipass delete \
     "${CLUSTER_PREFIX}-server" \
@@ -32,7 +41,7 @@ fallback_cleanup() {
 }
 
 cleanup() {
-  run_pk3s destroy --profile "${PROFILE_URL}" >/dev/null 2>&1 || true
+  run_pk3s destroy --profile "$(profile_target)" >/dev/null 2>&1 || true
   fallback_cleanup
 }
 
@@ -46,11 +55,11 @@ need_cmd python3
 trap cleanup EXIT
 cleanup
 
-run_pk3s profile validate --profile "${PROFILE_URL}"
-run_pk3s plan --profile "${PROFILE_URL}"
-run_pk3s apply --profile "${PROFILE_URL}"
-run_pk3s status --profile "${PROFILE_URL}"
-run_pk3s destroy --profile "${PROFILE_URL}"
+run_pk3s profile validate --profile "$(profile_target)"
+run_pk3s plan --profile "$(profile_target)"
+run_pk3s apply --profile "$(profile_target)"
+run_pk3s status --profile "$(profile_target)"
+run_pk3s destroy --profile "$(profile_target)"
 
 trap - EXIT
 fallback_cleanup

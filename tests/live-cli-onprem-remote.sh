@@ -110,7 +110,16 @@ run_pk3s() {
   if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
     source_mode="local"
   fi
-  PRODUCTIVE_K3S_SOURCE="${source_mode}" "${PK3S_BIN}" "$@"
+  local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-}"
+  local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-}"
+  if [[ "${source_mode}" == "local" && -z "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" && -z "${profiles_repo_url}" ]]; then
+    profiles_repo_url="https://github.com/jemacchi/productive-k3s-profiles.git"
+    profiles_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
+  fi
+  PRODUCTIVE_K3S_SOURCE="${source_mode}" \
+    PRODUCTIVE_K3S_PROFILES_REPO_URL="${profiles_repo_url}" \
+    PRODUCTIVE_K3S_PROFILES_REPO_REF="${profiles_repo_ref}" \
+    "${PK3S_BIN}" "$@"
 }
 
 cleanup() {
