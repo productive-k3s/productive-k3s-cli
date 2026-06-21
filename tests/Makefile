@@ -32,7 +32,7 @@ docs-publish-check:
 	bash ./test-docs-structure.sh
 
 test-static-raw:
-	GO_BIN="$(GO_BIN)" go test ./...
+	GO_BIN="$(GO_BIN)" bash ./bin/run-go-tests.sh
 	bash ./test-go-tooling.sh
 	$(MAKE) docs-publish-check
 	bash ./test-release-versioning.sh
