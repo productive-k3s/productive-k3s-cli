@@ -10,6 +10,8 @@ CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-multipass.XXXXXX")"
 PROFILES_REPO_DIR=""
 INFRA_REPO_DIR_LOCAL=""
+CORE_REPO_DIR_LOCAL=""
+ADDONS_REPO_DIR_LOCAL=""
 
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
@@ -59,6 +61,30 @@ prepare_infra_repo_dir() {
   }
 }
 
+prepare_core_repo_dir() {
+  [[ -n "${PRODUCTIVE_K3S_REPO:-}" ]] && return 0
+  [[ -n "${CORE_REPO_DIR_LOCAL}" ]] && return 0
+
+  local core_repo_url="${PRODUCTIVE_K3S_CORE_REPO_URL:-${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL_DEFAULT}}"
+  local core_repo_ref="${PRODUCTIVE_K3S_CORE_REPO_REF:-development}"
+  CORE_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-core"
+  git clone --depth 1 --branch "${core_repo_ref}" "${core_repo_url}" "${CORE_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+    fail "could not clone productive-k3s-core from ${core_repo_url} (${core_repo_ref})"
+  }
+}
+
+prepare_addons_repo_dir() {
+  [[ -n "${PRODUCTIVE_K3S_ADDONS_REPO_DIR:-}" ]] && return 0
+  [[ -n "${ADDONS_REPO_DIR_LOCAL}" ]] && return 0
+
+  local addons_repo_url="${PRODUCTIVE_K3S_ADDONS_REPO_URL:-${PRODUCTIVE_K3S_ADDONS_GIT_REMOTE_URL_DEFAULT}}"
+  local addons_repo_ref="${PRODUCTIVE_K3S_ADDONS_REPO_REF:-${PRODUCTIVE_K3S_CORE_REPO_REF:-development}}"
+  ADDONS_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-addons"
+  git clone --depth 1 --branch "${addons_repo_ref}" "${addons_repo_url}" "${ADDONS_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+    fail "could not clone productive-k3s-addons from ${addons_repo_url} (${addons_repo_ref})"
+  }
+}
+
 run_pk3s() {
   local source_mode="remote"
   if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
@@ -66,10 +92,14 @@ run_pk3s() {
   fi
   if [[ "${source_mode}" == "local" ]]; then
     prepare_profiles_repo_dir
+    prepare_core_repo_dir
+    prepare_addons_repo_dir
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \
     PRODUCTIVE_K3S_INFRA_REPO_DIR="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}" \
     PRODUCTIVE_K3S_PROFILES_REPO_DIR="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}" \
+    PRODUCTIVE_K3S_REPO="${PRODUCTIVE_K3S_REPO:-${CORE_REPO_DIR_LOCAL}}" \
+    PRODUCTIVE_K3S_ADDONS_REPO_DIR="${PRODUCTIVE_K3S_ADDONS_REPO_DIR:-${ADDONS_REPO_DIR_LOCAL}}" \
     "${PK3S_BIN}" "$@"
 }
 
