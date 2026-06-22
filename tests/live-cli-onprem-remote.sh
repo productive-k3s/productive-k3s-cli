@@ -11,6 +11,7 @@ SERVER_NAME="pk3s-cli-onprem-server-${STAMP}"
 AGENT_NAME="pk3s-cli-onprem-agent-${STAMP}"
 ENV_FILE="${WORK_DIR}/onprem-remote.env"
 PROFILES_REPO_DIR=""
+INFRA_REPO_DIR_LOCAL=""
 SSH_KEY_PATH=""
 SSH_PUBKEY=""
 MULTIPASS_LAUNCH_RETRIES="${MULTIPASS_LAUNCH_RETRIES:-3}"
@@ -30,14 +31,41 @@ need_cmd() {
 }
 
 prepare_profiles_repo_dir() {
-  [[ -n "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" ]] && return 0
   [[ -n "${PROFILES_REPO_DIR}" ]] && return 0
-
+  local profiles_source_dir="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}"
   local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}}"
   local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}}"
+
+  prepare_infra_repo_dir
   PROFILES_REPO_DIR="${WORK_DIR}/productive-k3s-profiles"
-  git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
-    fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
+
+  if [[ -n "${profiles_source_dir}" ]]; then
+    [[ -d "${profiles_source_dir}/profiles" && -d "${profiles_source_dir}/scenarios" ]] || {
+      fail "invalid PRODUCTIVE_K3S_PROFILES_REPO_DIR: ${profiles_source_dir}"
+    }
+    mkdir -p "${PROFILES_REPO_DIR}"
+    cp -a "${profiles_source_dir}/." "${PROFILES_REPO_DIR}/"
+  else
+    git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
+      fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
+    }
+  fi
+
+  mkdir -p "${PROFILES_REPO_DIR}/ansible" "${PROFILES_REPO_DIR}/scripts" "${PROFILES_REPO_DIR}/tests"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/tests/." "${PROFILES_REPO_DIR}/tests/"
+}
+
+prepare_infra_repo_dir() {
+  [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}" ]] && return 0
+  [[ -n "${INFRA_REPO_DIR_LOCAL}" ]] && return 0
+
+  local infra_repo_url="${PRODUCTIVE_K3S_INFRA_REPO_URL:-${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT}}"
+  local infra_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
+  INFRA_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-infra"
+  git clone --depth 1 --branch "${infra_repo_ref}" "${infra_repo_url}" "${INFRA_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+    fail "could not clone productive-k3s-infra from ${infra_repo_url} (${infra_repo_ref})"
   }
 }
 
@@ -141,6 +169,7 @@ run_pk3s() {
     prepare_profiles_repo_dir
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \
+    PRODUCTIVE_K3S_INFRA_REPO_DIR="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}" \
     PRODUCTIVE_K3S_PROFILES_REPO_DIR="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}" \
     "${PK3S_BIN}" "$@"
 }

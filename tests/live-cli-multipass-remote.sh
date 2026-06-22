@@ -9,6 +9,7 @@ PROFILE_URL="${PK3S_CLI_MULTIPASS_PROFILE_URL:-${PRODUCTIVE_K3S_PROFILES_MULTIPA
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-multipass.XXXXXX")"
 PROFILES_REPO_DIR=""
+INFRA_REPO_DIR_LOCAL=""
 
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
@@ -20,14 +21,41 @@ need_cmd() {
 }
 
 prepare_profiles_repo_dir() {
-  [[ -n "${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}" ]] && return 0
   [[ -n "${PROFILES_REPO_DIR}" ]] && return 0
-
+  local profiles_source_dir="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}"
   local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}}"
   local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}}"
+
+  prepare_infra_repo_dir
   PROFILES_REPO_DIR="${WORK_DIR}/productive-k3s-profiles"
-  git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
-    fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
+
+  if [[ -n "${profiles_source_dir}" ]]; then
+    [[ -d "${profiles_source_dir}/profiles" && -d "${profiles_source_dir}/scenarios" ]] || {
+      fail "invalid PRODUCTIVE_K3S_PROFILES_REPO_DIR: ${profiles_source_dir}"
+    }
+    mkdir -p "${PROFILES_REPO_DIR}"
+    cp -a "${profiles_source_dir}/." "${PROFILES_REPO_DIR}/"
+  else
+    git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
+      fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
+    }
+  fi
+
+  mkdir -p "${PROFILES_REPO_DIR}/ansible" "${PROFILES_REPO_DIR}/scripts" "${PROFILES_REPO_DIR}/tests"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
+  cp -a "${INFRA_REPO_DIR_LOCAL}/tests/." "${PROFILES_REPO_DIR}/tests/"
+}
+
+prepare_infra_repo_dir() {
+  [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}" ]] && return 0
+  [[ -n "${INFRA_REPO_DIR_LOCAL}" ]] && return 0
+
+  local infra_repo_url="${PRODUCTIVE_K3S_INFRA_REPO_URL:-${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT}}"
+  local infra_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
+  INFRA_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-infra"
+  git clone --depth 1 --branch "${infra_repo_ref}" "${infra_repo_url}" "${INFRA_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+    fail "could not clone productive-k3s-infra from ${infra_repo_url} (${infra_repo_ref})"
   }
 }
 
@@ -40,6 +68,7 @@ run_pk3s() {
     prepare_profiles_repo_dir
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \
+    PRODUCTIVE_K3S_INFRA_REPO_DIR="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}" \
     PRODUCTIVE_K3S_PROFILES_REPO_DIR="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}" \
     "${PK3S_BIN}" "$@"
 }
@@ -52,9 +81,13 @@ fallback_cleanup() {
   multipass purge >/dev/null 2>&1 || true
 }
 
-cleanup() {
+initial_cleanup() {
   run_pk3s destroy --profile "${PROFILE_URL}" >/dev/null 2>&1 || true
   fallback_cleanup
+}
+
+cleanup() {
+  initial_cleanup
   rm -rf "${WORK_DIR}"
 }
 
@@ -67,7 +100,7 @@ need_cmd git
 [[ -x "${PK3S_BIN}" ]] || fail "pk3s binary is not executable: ${PK3S_BIN}"
 
 trap cleanup EXIT
-cleanup
+initial_cleanup
 
 run_pk3s profile validate --profile "${PROFILE_URL}"
 run_pk3s plan --profile "${PROFILE_URL}"
