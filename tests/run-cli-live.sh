@@ -116,6 +116,42 @@ scenario_node_count() {
   esac
 }
 
+pk3s_source_mode() {
+  if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+    printf 'local\n'
+  else
+    printf 'remote\n'
+  fi
+}
+
+pk3s_core_version_label() {
+  if [[ "$(pk3s_source_mode)" == "local" ]]; then
+    if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_REF:-}" ]]; then
+      printf '%s\n' "${PRODUCTIVE_K3S_CORE_REPO_REF}"
+    elif [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}" ]]; then
+      printf 'checkout\n'
+    else
+      printf 'development\n'
+    fi
+  else
+    printf '%s\n' "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:-unknown}"
+  fi
+}
+
+pk3s_infra_version_label() {
+  if [[ "$(pk3s_source_mode)" == "local" ]]; then
+    if [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+      printf '%s\n' "${PRODUCTIVE_K3S_INFRA_REPO_REF}"
+    elif [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}" ]]; then
+      printf 'checkout\n'
+    else
+      printf 'development\n'
+    fi
+  else
+    printf '%s\n' "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:-unknown}"
+  fi
+}
+
 write_run_manifest() {
   local scenario="$1"
   local result="$2"
@@ -147,9 +183,9 @@ write_run_manifest() {
     printf '  "duration_seconds": %s,\n' "${duration_seconds}"
     printf '  "pk3s": {\n'
     printf '    "binary": "%s",\n' "$(json_escape "${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}")"
-    printf '    "source": "remote",\n'
-    printf '    "core_version": "%s",\n' "$(json_escape "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:-unknown}")"
-    printf '    "infra_version": "%s"\n' "$(json_escape "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:-unknown}")"
+    printf '    "source": "%s",\n' "$(json_escape "$(pk3s_source_mode)")"
+    printf '    "core_version": "%s",\n' "$(json_escape "$(pk3s_core_version_label)")"
+    printf '    "infra_version": "%s"\n' "$(json_escape "$(pk3s_infra_version_label)")"
     printf '  },\n'
     printf '  "installation": {\n'
     printf '    "environment": "%s",\n' "$(json_escape "${environment}")"

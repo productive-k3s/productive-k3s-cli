@@ -145,4 +145,5 @@ run_pk3s destroy --profile "${PROFILE_URL}"
 
 trap - EXIT
 fallback_cleanup
+rm -rf "${WORK_DIR}"
 printf '[PASS] multipass remote CLI validation completed\n'
