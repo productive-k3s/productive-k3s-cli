@@ -19,8 +19,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jemacchi/productive-k3s-cli/internal/bundles"
-	"github.com/jemacchi/productive-k3s-cli/internal/platform"
+	"github.com/productive-k3s/productive-k3s-cli/internal/bundles"
+	"github.com/productive-k3s/productive-k3s-cli/internal/platform"
 )
 
 var Version = "1.0.0"

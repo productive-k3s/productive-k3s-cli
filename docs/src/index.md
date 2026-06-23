@@ -14,10 +14,10 @@ sublead: "It resolves versioned bundles, validates their runtime contract, and d
 sublead_es: "Resuelve bundles versionados, valida su contrato de runtime y delega la ejecución hacia los entrypoints públicos de Core e Infra en lugar de reimplementar su lógica."
 primary_label: "View on GitHub"
 primary_label_es: "Ver en GitHub"
-primary_url: "https://github.com/jemacchi/productive-k3s-cli"
+primary_url: "https://github.com/productive-k3s/productive-k3s-cli"
 secondary_label: "Open README"
 secondary_label_es: "Abrir README"
-secondary_url: "https://github.com/jemacchi/productive-k3s-cli/blob/main/README.md"
+secondary_url: "https://github.com/productive-k3s/productive-k3s-cli/blob/main/README.md"
 card_title: "What it does"
 card_title_es: "Qué hace"
 card_items:

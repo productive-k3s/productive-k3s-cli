@@ -15,7 +15,7 @@ func envOrDefault(name, fallback string) string {
 }
 
 func GitHubOwnerDefault() string {
-	return envOrDefault("PRODUCTIVE_K3S_GITHUB_OWNER_DEFAULT", "jemacchi")
+	return envOrDefault("PRODUCTIVE_K3S_GITHUB_OWNER_DEFAULT", "productive-k3s")
 }
 
 func GitHubBaseURLDefault() string {

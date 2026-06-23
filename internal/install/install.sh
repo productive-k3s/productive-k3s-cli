@@ -10,7 +10,7 @@ if [[ -f "${REPO_ROOT}/scripts/release-config.sh" ]]; then
 fi
 
 PK3S_CLI_VERSION="${PK3S_CLI_VERSION:-${PK3S_CLI_VERSION_DEFAULT:-1.0.0}}"
-PK3S_CLI_REPO="${PK3S_CLI_REPO:-${PRODUCTIVE_K3S_CLI_REPO_DEFAULT:-jemacchi/productive-k3s-cli}}"
+PK3S_CLI_REPO="${PK3S_CLI_REPO:-${PRODUCTIVE_K3S_CLI_REPO_DEFAULT:-productive-k3s/productive-k3s-cli}}"
 PK3S_CLI_INSTALL_DIR="${PK3S_CLI_INSTALL_DIR:-$HOME/.local/bin}"
 
 need_cmd() {

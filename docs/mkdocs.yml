@@ -2,7 +2,7 @@ site_name: Productive K3S CLI
 site_description: Unified command-line interface for the Productive K3S ecosystem, with bilingual documentation.
 site_author: Productive K3S CLI
 site_url: https://cli.productive-k3s.io/
-repo_url: https://github.com/jemacchi/productive-k3s-cli
+repo_url: https://github.com/productive-k3s/productive-k3s-cli
 repo_name: GitHub
 edit_uri: edit/main/docs/src/
 docs_dir: src
@@ -145,4 +145,4 @@ extra:
     newsletter_placeholder_es: "E-mail"
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/jemacchi/productive-k3s-cli
+      link: https://github.com/productive-k3s/productive-k3s-cli

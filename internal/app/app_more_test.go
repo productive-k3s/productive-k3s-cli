@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jemacchi/productive-k3s-cli/internal/bundles"
+	"github.com/productive-k3s/productive-k3s-cli/internal/bundles"
 )
 
 func TestReadOnlyCommandsDoNotPropagateTelemetryContext(t *testing.T) {
@@ -1650,8 +1650,8 @@ func TestDefaultDependenciesAndHelpers(t *testing.T) {
 }
 
 func TestNormalizeProfileURLAndValidationHelpers(t *testing.T) {
-	rawGitHub := "https://github.com/jemacchi/productive-k3s-profiles/blob/main/profiles/aws-single-node/basic.env"
-	wantRaw := "https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/aws-single-node/basic.env"
+	rawGitHub := "https://github.com/productive-k3s/productive-k3s-profiles/blob/main/profiles/aws-single-node/basic.env"
+	wantRaw := "https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/aws-single-node/basic.env"
 	if got := normalizeProfileURL(rawGitHub); got != wantRaw {
 		t.Fatalf("unexpected normalized github url: %q", got)
 	}

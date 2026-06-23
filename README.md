@@ -26,7 +26,7 @@ The first release supports:
 Unix-like install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jemacchi/productive-k3s-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/productive-k3s/productive-k3s-cli/main/install.sh | bash
 ```
 
 Manual local install from source tree:

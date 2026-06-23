@@ -12,8 +12,8 @@ The CLI is designed to feel like a normal platform command:
 ```bash
 pk3s help
 pk3s profile list
-pk3s plan --profile https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env
-pk3s apply --profile https://raw.githubusercontent.com/jemacchi/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env
+pk3s plan --profile https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env
+pk3s apply --profile https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env
 ```
 
 When a command targets Productive K3S Core directly, the CLI delegates into the Core public entrypoint. When a command targets infrastructure or profiles, the CLI delegates into the Infra public entrypoint.

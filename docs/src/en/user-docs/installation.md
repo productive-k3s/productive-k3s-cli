@@ -11,7 +11,7 @@ It does not install Productive K3S Core or Productive K3S Infra bundles up front
 Install from the public script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jemacchi/productive-k3s-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/productive-k3s/productive-k3s-cli/main/install.sh | bash
 ```
 
 By default the installer writes to:
