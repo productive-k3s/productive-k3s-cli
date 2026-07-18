@@ -16,4 +16,4 @@ pk3s plan --profile https://raw.githubusercontent.com/productive-k3s/productive-
 pk3s apply --profile https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/multipass/1-server-2-agents.env
 ```
 
-When a command targets Productive K3S Core directly, the CLI delegates into the Core public entrypoint. When a command targets infrastructure or profiles, the CLI delegates into the Infra public entrypoint.
+When a command targets Productive K3S Core directly, the CLI delegates into the Core public contract. When a command targets infrastructure or profiles, the CLI delegates into the Infra public contract.

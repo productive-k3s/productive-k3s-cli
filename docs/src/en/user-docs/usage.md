@@ -4,6 +4,11 @@
 
 If you want a short copy-paste oriented command list instead of this explanatory page, use [Quick reference](quick-reference.md).
 
+The normal recommendation is:
+
+- use `remote` when you are consuming Productive K3S as a product;
+- use `local` when you are developing against sibling repositories on disk.
+
 The CLI supports two bundle resolution modes:
 
 - `local`: only use sibling repositories on disk
@@ -61,7 +66,9 @@ The current remote baseline is:
 - Productive K3S Core `0.9.4`
 - Productive K3S Infra `0.9.62-0.9.4`
 
-The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public entrypoints.
+The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public command surfaces.
+
+That is why `pk3s` is the recommended user path: it keeps the experience simple while still making the underlying component versions explicit.
 
 ## Telemetry controls
 

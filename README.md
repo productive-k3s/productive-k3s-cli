@@ -2,7 +2,9 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-yellow.svg)](./LICENSE)
 
-`productive-k3s-cli` is the unified command-line entrypoint for the Productive K3S ecosystem. It resolves Productive K3S Core and Productive K3S Infra bundles either from sibling repositories on disk or from published GitHub Releases, then delegates execution to their public entrypoints.
+`productive-k3s-cli` is the simplest and recommended unified interface for using Productive K3S.
+
+It resolves Productive K3S Core and Productive K3S Infra bundles either from sibling repositories on disk or from published GitHub Releases, then delegates execution to their public command surfaces.
 
 ## Overview
 
@@ -14,6 +16,8 @@ The first release supports:
 - remote bundle resolution against GitHub Releases;
 - command delegation to `productive-k3s-core.sh` and `productive-k3s-infra.sh`;
 - native CLI builds for Linux, macOS, and Windows.
+
+`pk3s` does not replace `core` or `infra`. It keeps them independently usable while making the normal path much easier.
 
 ## Documentation
 
@@ -53,7 +57,7 @@ PRODUCTIVE_K3S_SOURCE=remote pk3s bundle core info --json
 PRODUCTIVE_K3S_SOURCE=remote pk3s profile list
 ```
 
-`pk3s profile list` is catalog-backed. It does not delegate to the Infra bundle, which keeps the remote Infra release surface focused on package-first runtime commands.
+`pk3s profile list` is catalog-backed. It does not delegate to the Infra bundle, which keeps the remote Infra release surface focused on packaged deployment commands.
 
 Catalog-backed package usage:
 
@@ -72,6 +76,17 @@ When the catalog declares that a profile requires local overrides, `pk3s` now fa
 `pk3s` only prepares command-level telemetry for mutating workflows such as `install`, `profile install`, `infra install`, `infra apply`, `infra destroy`, `apply`, `destroy`, and `addon install`. Read-only commands such as `help`, `version`, `bom --json`, `bundle info --json`, `profile list`, `profile show`, `profile validate`, `infra plan`, `infra status`, `addon list`, and `addon validate` do not prompt for telemetry or emit command-level events.
 
 For add-ons, `--public-host` is intentionally narrow. It only covers the basic Core-managed ingress case for add-ons that declare that support in metadata. Richer ingress behavior remains an add-on concern rather than a generic `pk3s` or Core feature.
+
+## When to use CLI
+
+- when you want the simplest and recommended Productive K3S experience
+- when you want one coherent interface across base installation and deployment workflows
+- when you want to move between local development and published releases without changing the user-facing workflow
+
+## When to use Core or Infra directly
+
+- use `core` directly when you want the most explicit Kubernetes base-installation contract
+- use `infra` directly when you want the most explicit deployment-layer control
 
 Force local sibling resolution:
 

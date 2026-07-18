@@ -1,6 +1,6 @@
 # Perfiles
 
-Los flujos de Infra usan perfiles.
+Los flujos de Infra usan perfiles, y el CLI es la forma más simple de consumir esos caminos curados de despliegue.
 
 Ejemplos:
 

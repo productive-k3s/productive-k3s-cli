@@ -117,11 +117,23 @@ nav:
           - Referencia rápida: es/user-docs/referencia-rapida.md
           - Privacidad y telemetría: es/user-docs/privacy-and-telemetry.md
           - Perfiles: es/user-docs/profiles.md
-          - Troubleshooting: es/user-docs/troubleshooting.md
+          - Resolución de problemas: es/user-docs/troubleshooting.md
       - Documentación para desarrolladores:
           - es/developer-docs/index.md
           - Targets de Make: es/developer-docs/make-targets.md
           - GitHub Actions y releases: es/developer-docs/github-actions.md
+          - Arquitectura: es/developer-docs/architecture/index.md
+          - CLI: es/developer-docs/cli/index.md
+          - Bundles: es/developer-docs/bundles/index.md
+          - Perfiles: es/developer-docs/profiles/index.md
+          - Desarrollo: es/developer-docs/development/index.md
+          - Add-ons: es/developer-docs/addons/index.md
+          - Decisiones: es/developer-docs/decisions/index.md
+          - Especificaciones:
+              - es/developer-docs/specifications/index.md
+              - Especificación del CLI: es/developer-docs/specifications/cli-specification.md
+          - Pruebas: es/developer-docs/testing/index.md
+          - Hoja de ruta: es/developer-docs/roadmap/index.md
           - Guías:
               - es/developer-docs/guides/index.md
               - Alcance y responsabilidades del CLI: es/developer-docs/guides/cli-scope.md

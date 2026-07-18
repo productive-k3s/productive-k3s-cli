@@ -1,12 +1,12 @@
 # Producto
 
-Productive K3S CLI es el entrypoint orientado a usuarios para el ecosistema Productive K3S.
+Productive K3S CLI es la interfaz unificada más simple y recomendada para usar Productive K3S.
 
-No reemplaza a Productive K3S Core ni a Productive K3S Infra. En cambio, resuelve el bundle versionado correcto, lo prepara localmente y delega la operación solicitada a la interfaz pública expuesta por esos repositorios.
+No reemplaza a Productive K3S Core ni a Productive K3S Infra. En cambio, los vuelve más fáciles de consumir mediante una sola superficie coherente de comandos mientras preserva sus contratos reales.
 
 Usá esta sección si querés entender:
 
 - de qué se hace cargo `pk3s`;
 - cómo se relaciona con Core e Infra;
-- por qué el CLI usa bundles remotos por defecto;
-- cuándo sigue teniendo sentido usar resolución local con repos hermanos.
+- cuándo el CLI es el camino recomendado;
+- cuándo sigue teniendo sentido usar Core o Infra de forma directa.
