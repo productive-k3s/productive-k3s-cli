@@ -12,6 +12,13 @@ SSH_KEY_PATH="${WORK_DIR}/id_ed25519"
 CURRENT_USER="$(id -un)"
 LOCALHOST_IP="127.0.0.1"
 
+# This GitHub-hosted live scenario is meant to exercise the source/dev surface by
+# cloning the dependent repos from GitHub, not the package-only release surface.
+: "${PRODUCTIVE_K3S_INFRA_REPO_REF:=development}"
+: "${PRODUCTIVE_K3S_CORE_REPO_REF:=development}"
+: "${PRODUCTIVE_K3S_PROFILES_REPO_REF:=development}"
+: "${PRODUCTIVE_K3S_ADDONS_REPO_REF:=development}"
+
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
   exit 1
