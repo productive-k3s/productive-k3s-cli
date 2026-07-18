@@ -805,7 +805,7 @@ func lookupProfilePath(value string, deps Dependencies) (string, bool) {
 
 	switch requestedSourceMode() {
 	case "local":
-		localInfra, err := bundles.ResolveLocalSibling("infra", deps.WorkingDir)
+		localInfra, err := bundles.ResolveLocalBundle("infra", deps.WorkingDir, deps.CacheDir)
 		if err == nil {
 			searchRoots = append(searchRoots, filepath.Join(localInfra.Root, "profiles"))
 		}

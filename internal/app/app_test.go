@@ -424,6 +424,47 @@ func TestRunProfileValidateDownloadsHTTPProfileAndDelegates(t *testing.T) {
 	}
 }
 
+func TestResolveProfilePathUsesExplicitLocalInfraBundle(t *testing.T) {
+	workingDir := t.TempDir()
+	cacheDir := filepath.Join(workingDir, "cache")
+	testsDir := filepath.Join(workingDir, "tests")
+	if err := os.MkdirAll(testsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	infraDir := filepath.Join(workingDir, "clones", "productive-k3s-infra")
+	profilesDir := filepath.Join(infraDir, "profiles", "edge")
+	if err := os.MkdirAll(profilesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(infraDir, "productive-k3s-infra.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	profilePath := filepath.Join(profilesDir, "basic.env")
+	if err := os.WriteFile(profilePath, []byte("PK3S_INFRA_PROFILE_NAME=basic\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	t.Setenv("PRODUCTIVE_K3S_INFRA_REPO_DIR", infraDir)
+
+	resolved, code := resolveProfilePath("basic", Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: testsDir,
+		CacheDir:   cacheDir,
+		HTTPClient: http.DefaultClient,
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if resolved != profilePath {
+		t.Fatalf("expected resolved path %q, got %q", profilePath, resolved)
+	}
+}
+
 func TestRunValidateProfileDelegatesToInfraScenarioValidate(t *testing.T) {
 	workingDir := t.TempDir()
 	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
