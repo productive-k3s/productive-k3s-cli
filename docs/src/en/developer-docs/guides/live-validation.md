@@ -11,6 +11,7 @@ Use the aggregate targets:
 ```bash
 make test-live-remote
 make test-live-catalog
+make test-live-export
 ```
 
 Or run a single validator:
@@ -18,6 +19,7 @@ Or run a single validator:
 ```bash
 make -C tests test-live-remote SCENARIOS=multipass
 make -C tests test-live-remote SCENARIOS=onprem-basic
+make -C tests test-live-export
 ```
 
 ## Covered scenarios
@@ -47,6 +49,33 @@ The validator:
 6. runs `pk3s infra destroy`
 
 This proves the catalog-backed package UX against a real local Multipass target.
+
+### `stack-export-ubuntu24`
+
+The validator:
+
+1. downloads the published `base` stack artifact
+2. runs `pk3s stack export --tgz ... --output ...`
+3. hands the generated installer to the validated Core VM harness
+4. boots an Ubuntu 24.04 VM
+5. runs the exported `install.sh`
+6. checks that the base stack namespaces exist
+
+This proves the public CLI path for `cli -> core -> exported installer`.
+
+### `profile-export-multipass`
+
+The validator:
+
+1. downloads the published Multipass profile artifact
+2. writes a temporary env override with a unique cluster name
+3. runs `pk3s profile export --tgz ... --env-file ... --output ...`
+4. extracts the generated installer
+5. runs the exported `install.sh`
+6. checks the bundled `productive-k3s-infra.sh profile status --tgz ...`
+7. verifies that three Multipass instances were created
+
+This proves the public CLI path for `cli -> infra -> exported installer`.
 
 ### `onprem-basic`
 

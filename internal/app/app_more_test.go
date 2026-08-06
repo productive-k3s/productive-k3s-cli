@@ -457,21 +457,21 @@ entries:
     kind: profile
     visibility: public
     category: local
-    version: 0.9.62-0.9.4
+    version: 0.9.63-0.9.5
     artifact:
       type: tgz
-      url: SERVER_URL/infra/multipass-1-server-2-agents-0.9.62-0.9.4.tgz
+      url: SERVER_URL/infra/multipass-1-server-2-agents-0.9.63-0.9.5.tgz
   - id: aws-single-node-basic
     name: aws-single-node-basic
     kind: profile
     visibility: public
     category: cloud
-    version: 0.9.62-0.9.4
+    version: 0.9.63-0.9.5
     install:
       requiresLocalOverrides: true
     artifact:
       type: tgz
-      url: SERVER_URL/infra/aws-single-node-basic-0.9.62-0.9.4.tgz
+      url: SERVER_URL/infra/aws-single-node-basic-0.9.63-0.9.5.tgz
 `, "SERVER_URL", server.URL)))
 	}))
 	defer server.Close()
@@ -489,10 +489,10 @@ entries:
 	if code != 0 {
 		t.Fatalf("expected profile list to succeed, got %d", code)
 	}
-	if got := stdout.String(); !strings.Contains(got, "multipass-1-server-2-agents\t0.9.62-0.9.4\tlocal") {
+	if got := stdout.String(); !strings.Contains(got, "multipass-1-server-2-agents\t0.9.63-0.9.5\tlocal") {
 		t.Fatalf("expected catalog-backed local profile listing, got %q", got)
 	}
-	if got := stdout.String(); !strings.Contains(got, "aws-single-node-basic\t0.9.62-0.9.4\tcloud\tneeds-env") {
+	if got := stdout.String(); !strings.Contains(got, "aws-single-node-basic\t0.9.63-0.9.5\tcloud\tneeds-env") {
 		t.Fatalf("expected catalog-backed needs-env marker, got %q", got)
 	}
 
@@ -648,6 +648,54 @@ func TestRunProfileInstallDelegatesTGZToInfra(t *testing.T) {
 	}
 	if strings.Join(got.Args, " ") != "profile install --tgz "+tgzPath {
 		t.Fatalf("unexpected profile install tgz args: %#v", got.Args)
+	}
+}
+
+func TestRunProfileAndInfraExportDelegateTGZToInfra(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	infraDir := filepath.Join(workingDir, "productive-k3s-infra")
+	if err := os.MkdirAll(infraDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(infraDir, "productive-k3s-infra.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "basic-profile.tgz")
+	if err := os.WriteFile(tgzPath, []byte("profile"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var invocations []Invocation
+	deps := noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			invocations = append(invocations, invocation)
+			return nil
+		},
+	})
+
+	if code := Run(context.Background(), []string{"profile", "export", "--tgz", tgzPath, "--output", "./bundle"}, deps); code != 0 {
+		t.Fatalf("profile export expected exit 0, got %d", code)
+	}
+	if code := Run(context.Background(), []string{"infra", "export", "--tgz", tgzPath, "--output", "./bundle"}, deps); code != 0 {
+		t.Fatalf("infra export expected exit 0, got %d", code)
+	}
+
+	if len(invocations) != 2 {
+		t.Fatalf("expected 2 invocations, got %d", len(invocations))
+	}
+	if strings.Join(invocations[0].Args, " ") != "profile export --tgz "+tgzPath+" --output ./bundle" {
+		t.Fatalf("unexpected profile export args: %#v", invocations[0].Args)
+	}
+	if strings.Join(invocations[1].Args, " ") != "profile export --tgz "+tgzPath+" --output ./bundle" {
+		t.Fatalf("unexpected infra export args: %#v", invocations[1].Args)
 	}
 }
 
@@ -942,6 +990,54 @@ func TestRunAddonValidateDelegatesTGZToCore(t *testing.T) {
 	}
 	if strings.Join(got.Args, " ") != "addon validate --tgz "+tgzPath {
 		t.Fatalf("unexpected addon tgz args: %#v", got.Args)
+	}
+}
+
+func TestRunAddonAndStackExportDelegateToCore(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-addon.tgz")
+	if err := os.WriteFile(tgzPath, []byte("addon"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var invocations []Invocation
+	deps := noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			invocations = append(invocations, invocation)
+			return nil
+		},
+	})
+
+	if code := Run(context.Background(), []string{"addon", "export", "--tgz", tgzPath, "--output", "./bundle"}, deps); code != 0 {
+		t.Fatalf("addon export expected exit 0, got %d", code)
+	}
+	if code := Run(context.Background(), []string{"stack", "export", "--tgz", tgzPath, "--output", "./bundle"}, deps); code != 0 {
+		t.Fatalf("stack export expected exit 0, got %d", code)
+	}
+
+	if len(invocations) != 2 {
+		t.Fatalf("expected 2 invocations, got %d", len(invocations))
+	}
+	if strings.Join(invocations[0].Args, " ") != "addon export --tgz "+tgzPath+" --output ./bundle" {
+		t.Fatalf("unexpected addon export args: %#v", invocations[0].Args)
+	}
+	if strings.Join(invocations[1].Args, " ") != "stack export --tgz "+tgzPath+" --output ./bundle" {
+		t.Fatalf("unexpected stack export args: %#v", invocations[1].Args)
 	}
 }
 

@@ -23,6 +23,7 @@ Development commands:
   test-checkstatus
   test-live-remote
   test-live-catalog
+  test-live-export
   test-live-gha-onprem-remote
   set-bundles-versions
   tag-release
@@ -78,6 +79,9 @@ case "$COMMAND" in
     ;;
   test-live-catalog)
     exec bash "${REPO_DIR}/tests/run-cli-live.sh" catalog-multipass "$@"
+    ;;
+  test-live-export)
+    exec bash "${REPO_DIR}/tests/run-cli-live.sh" stack-export-ubuntu24 profile-export-multipass "$@"
     ;;
   test-live-gha-onprem-remote)
     exec bash "${REPO_DIR}/tests/live-cli-onprem-remote-github-host.sh" "$@"

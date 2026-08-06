@@ -28,7 +28,18 @@ assert_contains_file() {
 }
 
 mkdir -p "${WORKTREE}"
-cp -a "${ROOT_DIR}/." "${WORKTREE}"
+if git -C "${ROOT_DIR}" rev-parse --git-dir >/dev/null 2>&1; then
+  git clone --quiet "${ROOT_DIR}" "${WORKTREE}" || fail "could not clone cli repo into temporary worktree"
+  (
+    cd "${ROOT_DIR}"
+    tar --exclude=.git -cf - .
+  ) | (
+    cd "${WORKTREE}"
+    tar -xf -
+  )
+else
+  cp -a "${ROOT_DIR}/." "${WORKTREE}"
+fi
 git init --bare "${CORE_REMOTE}" >/dev/null
 git init --bare "${INFRA_REMOTE}" >/dev/null
 

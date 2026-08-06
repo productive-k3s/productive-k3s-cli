@@ -7,7 +7,7 @@ else
 GO_BIN ?= go
 endif
 
-.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-gha-onprem-remote test-checkstatus test-clean test-clean-all
+.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-checkstatus test-clean test-clean-all
 
 test-local-all:
 	GO_BIN="$(GO_BIN)" bash $(DEV_WRAPPER) test-local-all
@@ -53,6 +53,10 @@ test-live-remote:
 test-live-catalog:
 	$(MAKE) -C .. build
 	bash ./run-cli-live.sh catalog-multipass
+
+test-live-export:
+	$(MAKE) -C .. build
+	bash ./run-cli-live.sh stack-export-ubuntu24 profile-export-multipass
 
 test-live-gha-onprem-remote:
 	$(MAKE) -C .. build

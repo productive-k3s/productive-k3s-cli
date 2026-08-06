@@ -10,6 +10,7 @@ This directory now exposes a normalized local interface aligned with `productive
 make test-local-all
 make test-live-remote
 make test-live-catalog
+make test-live-export
 make test-clean-all
 make docs-build
 make docs-serve
@@ -36,6 +37,7 @@ make -C tests test-clean-all
 
 - Go unit coverage for CLI parsing, telemetry/config helpers, platform gating, bundle resolution, and command dispatch/error paths
 - existing shell contract tests for CLI-to-core/infra delegation
+- live exported-installer validation for CLI-to-core and CLI-to-infra export flows
 - shell lint/format checks for helper scripts
 - spell checks for docs, shell scripts, and test content
 

@@ -119,6 +119,8 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 		return runInfra(ctx, args[1:], deps, telemetryOverride)
 	case "addon":
 		return runAddon(ctx, args[1:], deps, telemetryOverride)
+	case "stack":
+		return runStack(ctx, args[1:], deps, telemetryOverride)
 	case "plan", "apply", "destroy", "status":
 		return runInfraProfileCommand(ctx, args[0], args[1:], deps, telemetryOverride)
 	case "doctor":
@@ -283,7 +285,7 @@ func runBOM(ctx context.Context, args []string, deps Dependencies) int {
 			"goarch":     deps.GOARCH,
 		},
 		"catalog": map[string]any{
-			"default_url":    bundles.CatalogURLDefault(),
+			"default_url":     bundles.CatalogURLDefault(),
 			"configured_urls": configuredCatalogs,
 		},
 		"bundles": map[string]any{
@@ -304,7 +306,7 @@ func runBOM(ctx context.Context, args []string, deps Dependencies) int {
 
 func runProfile(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if len(args) == 0 {
-		fmt.Fprintln(deps.Stderr, "Usage: pk3s profile <list|show|validate|install> [profile]")
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s profile <list|show|validate|install|export> [profile]")
 		return 2
 	}
 	switch args[0] {
@@ -375,19 +377,7 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 			return code
 		}
 		return delegate(ctx, deps, "infra", false, []string{"profile", "install", "--tgz", tgz}, env, maybeCLITelemetryContext("profile-install", "infra", false, deps, telemetryOverride))
-	default:
-		fmt.Fprintf(deps.Stderr, "Unsupported profile command: %s\n", args[0])
-		return 2
-	}
-}
-
-func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
-	if len(args) == 0 {
-		fmt.Fprintln(deps.Stderr, "Usage: pk3s infra <install|plan|apply|destroy|status> --tgz <file|url>")
-		return 2
-	}
-	switch args[0] {
-	case "install", "plan", "apply", "destroy", "status":
+	case "export":
 		filteredArgs, env, code := parsePackageEnvFile(args[1:], deps.Stderr)
 		if code != 0 {
 			return code
@@ -406,7 +396,7 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 				fmt.Fprintln(deps.Stderr, err.Error())
 				return 2
 			}
-			return delegate(ctx, deps, "infra", false, []string{"profile", args[0], "--tgz", resolved}, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
+			return delegate(ctx, deps, "infra", false, append([]string{"profile", "export", "--tgz", resolved}, removeTGZArg(filteredArgs)...), env, nil)
 		}
 		tgz, code, ok := resolveTGZArg(filteredArgs, deps)
 		if !ok {
@@ -416,7 +406,57 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 		if code != 0 {
 			return code
 		}
-		return delegate(ctx, deps, "infra", false, []string{"profile", args[0], "--tgz", tgz}, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
+		return delegate(ctx, deps, "infra", false, append([]string{"profile", "export", "--tgz", tgz}, removeTGZArg(filteredArgs)...), env, nil)
+	default:
+		fmt.Fprintf(deps.Stderr, "Unsupported profile command: %s\n", args[0])
+		return 2
+	}
+}
+
+func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
+	if len(args) == 0 {
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s infra <install|export|plan|apply|destroy|status> --tgz <file|url>")
+		return 2
+	}
+	switch args[0] {
+	case "install", "export", "plan", "apply", "destroy", "status":
+		filteredArgs, env, code := parsePackageEnvFile(args[1:], deps.Stderr)
+		if code != 0 {
+			return code
+		}
+		if value, found := firstNonFlagArg(filteredArgs); found && !contains(filteredArgs, "--tgz") && !isHTTPAssetURL(value) && !statFile(value) && !looksLikeLocalTGZPath(value) {
+			entry, err := findCatalogEntry(ctx, deps, "profile", value)
+			if err != nil {
+				fmt.Fprintln(deps.Stderr, err.Error())
+				return 2
+			}
+			if exitCode := profileCatalogInstallPreflight(entry, env, deps.Stderr); exitCode != 0 {
+				return exitCode
+			}
+			resolved, err := downloadCatalogEntryTGZ(ctx, deps, entry)
+			if err != nil {
+				fmt.Fprintln(deps.Stderr, err.Error())
+				return 2
+			}
+			delegatedArgs := []string{"profile", args[0], "--tgz", resolved}
+			if args[0] == "export" {
+				delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
+			}
+			return delegate(ctx, deps, "infra", false, delegatedArgs, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
+		}
+		tgz, code, ok := resolveTGZArg(filteredArgs, deps)
+		if !ok {
+			fmt.Fprintln(deps.Stderr, "missing tgz; use --tgz <file|url>")
+			return 2
+		}
+		if code != 0 {
+			return code
+		}
+		delegatedArgs := []string{"profile", args[0], "--tgz", tgz}
+		if args[0] == "export" {
+			delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
+		}
+		return delegate(ctx, deps, "infra", false, delegatedArgs, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
 	default:
 		fmt.Fprintf(deps.Stderr, "Unsupported infra command: %s\n", args[0])
 		return 2
@@ -425,7 +465,7 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 
 func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if len(args) == 0 {
-		fmt.Fprintln(deps.Stderr, "Usage: pk3s addon <list|install|validate> [flags]")
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s addon <list|install|validate|export> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -481,8 +521,47 @@ func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOv
 			coreArgs = append(coreArgs, "--public-host", target.publicHost)
 		}
 		return delegate(ctx, deps, "core", true, coreArgs, env, maybeCLITelemetryContext("addon-install", "core", false, deps, telemetryOverride))
+	case "export":
+		if resolved, handled, exitCode := maybeResolveCatalogName(ctx, deps, "addon", args[1:], "", 0, false); handled {
+			if exitCode != 0 {
+				return exitCode
+			}
+			return delegate(ctx, deps, "core", false, append([]string{"addon", "export", "--tgz", resolved}, removeTGZArg(args[1:])...), nil, nil)
+		}
+		tgz, code, ok := resolveTGZArg(args[1:], deps)
+		if !ok {
+			fmt.Fprintln(deps.Stderr, "missing tgz; use --tgz <file|url>")
+			return 2
+		}
+		if code != 0 {
+			return code
+		}
+		return delegate(ctx, deps, "core", false, append([]string{"addon", "export", "--tgz", tgz}, removeTGZArg(args[1:])...), nil, nil)
 	default:
 		fmt.Fprintf(deps.Stderr, "Unsupported addon command: %s\n", args[0])
+		return 2
+	}
+}
+
+func runStack(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
+	_ = telemetryOverride
+	if len(args) == 0 {
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s stack export --tgz <file|url> --output <path>")
+		return 2
+	}
+	switch args[0] {
+	case "export":
+		tgz, code, ok := resolveTGZArg(args[1:], deps)
+		if !ok {
+			fmt.Fprintln(deps.Stderr, "missing tgz; use --tgz <file|url>")
+			return 2
+		}
+		if code != 0 {
+			return code
+		}
+		return delegate(ctx, deps, "core", false, append([]string{"stack", "export", "--tgz", tgz}, removeTGZArg(args[1:])...), nil, nil)
+	default:
+		fmt.Fprintf(deps.Stderr, "Unsupported stack command: %s\n", args[0])
 		return 2
 	}
 }
@@ -740,6 +819,20 @@ func resolveTGZArg(args []string, deps Dependencies) (string, int, bool) {
 		return resolveTGZPath(args[0], deps)
 	}
 	return "", 0, false
+}
+
+func removeTGZArg(args []string) []string {
+	filtered := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--tgz" {
+			if i+1 < len(args) {
+				i++
+			}
+			continue
+		}
+		filtered = append(filtered, args[i])
+	}
+	return filtered
 }
 
 func resolveTGZPath(value string, deps Dependencies) (string, int, bool) {
@@ -1039,6 +1132,7 @@ Usage:
   profile
   infra
   addon
+  stack
   plan
   apply
   destroy
@@ -1048,6 +1142,7 @@ Use:
   pk3s help profile
   pk3s help infra
   pk3s help addon
+  pk3s help stack
   pk3s help plan
   pk3s help bundle
 `)
@@ -1058,19 +1153,21 @@ func helpTopics() map[string]string {
 		"profile": `Profile commands
 
 Usage:
-  pk3s profile <list|show|validate|install> [flags]
+  pk3s profile <list|show|validate|install|export> [flags]
 
 Subcommands:
   list
   show <name>
   validate --tgz <file|url>
   install --tgz <file|url> [--env-file <file>]
+  export --tgz <file|url> --output <path> [--env-file <file>]
 
 Examples:
   pk3s profile list
   pk3s profile show aws-single-node-basic
   pk3s profile validate --tgz ./multipass-profile.tgz
   pk3s profile install --tgz ./multipass-profile.tgz
+  pk3s profile export --tgz ./multipass-profile.tgz --output ./multipass-installer
   pk3s profile install aws-single-node-basic --env-file ./aws.env
 
 Notes:
@@ -1082,10 +1179,11 @@ Notes:
 		"infra": `Infra commands
 
 Usage:
-  pk3s infra <install|plan|apply|destroy|status> --tgz <file|url> [--env-file <file>]
+  pk3s infra <install|export|plan|apply|destroy|status> --tgz <file|url> [--env-file <file>]
 
 Examples:
   pk3s infra install --tgz ./aws-single-node-basic.tgz
+  pk3s infra export --tgz ./aws-single-node-basic.tgz --output ./aws-installer
   pk3s infra status --tgz ./aws-single-node-basic.tgz
   pk3s infra apply aws-single-node-basic --env-file ./aws.env
 
@@ -1100,11 +1198,13 @@ Notes:
 Usage:
   pk3s addon list
   pk3s addon validate --tgz <file|url>
+  pk3s addon export --tgz <file|url> --output <path>
   pk3s addon install --tgz <file|url> [--public-host <fqdn>] (--kubeconfig <file> | --cluster-context <name>)
 
 Examples:
   pk3s addon list
   pk3s addon validate --tgz ./longhorn-addon.tgz
+  pk3s addon export --tgz ./longhorn-addon.tgz --output ./longhorn-installer
   pk3s addon install --tgz ./longhorn-addon.tgz --cluster-context default
   pk3s addon install nginx --kubeconfig ~/.kube/config
   pk3s addon install nginx --profile multipass-1-server-2-agents --public-host nginx-01.k3s.lab.internal
@@ -1115,6 +1215,20 @@ Notes:
   Use --profile after the target profile has been installed or inspected so pk3s can derive the cluster access details.
   --public-host only works for add-ons that declare the basic Core-managed ingress contract.
   Advanced ingress customization remains an add-on responsibility, not a generic Core feature.
+`,
+		"stack": `Stack commands
+
+Usage:
+  pk3s stack export --tgz <file|url> --output <path>
+
+Subcommands:
+  export --tgz <file|url> --output <path>
+
+Examples:
+  pk3s stack export --tgz ./base-stack.tgz --output ./base-installer
+
+Notes:
+  Public stack export is package-oriented and delegates to Productive K3S Core.
 `,
 		"plan": `Plan command
 
