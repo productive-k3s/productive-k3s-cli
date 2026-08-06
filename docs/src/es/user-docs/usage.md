@@ -54,8 +54,8 @@ pk3s status --profile profiles/multipass/1-server-2-agents.env
 
 La base remota actual es:
 
-- Productive K3S Core `0.9.4`
-- Productive K3S Infra `0.9.62-0.9.4`
+- Productive K3S Core `0.9.5`
+- Productive K3S Infra `0.9.63-0.9.5`
 
 El CLI descarga esos bundles publicados desde GitHub Releases, verifica sus checksums, los extrae en el cache local y luego ejecuta sus superficies públicas de comandos.
 

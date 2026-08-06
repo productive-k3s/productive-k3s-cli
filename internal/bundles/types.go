@@ -29,8 +29,8 @@ type ReleaseManifest struct {
 
 func DefaultReleaseManifest() ReleaseManifest {
 	return ReleaseManifest{
-		CoreVersion:  "0.9.4",
-		InfraVersion: "0.9.62-0.9.4",
+		CoreVersion:  "0.9.5",
+		InfraVersion: "0.9.63-0.9.5",
 	}
 }
 
