@@ -73,6 +73,9 @@ prepare_infra_repo_dir() {
   git clone --depth 1 --branch "${infra_repo_ref}" "${infra_repo_url}" "${INFRA_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
     fail "could not clone productive-k3s-infra from ${infra_repo_url} (${infra_repo_ref})"
   }
+  printf '[INFO] infra ref=%s head=%s\n' \
+    "${infra_repo_ref}" \
+    "$(git -C "${INFRA_REPO_DIR_LOCAL}" rev-parse --short HEAD)"
 }
 
 prepare_core_repo_dir() {
@@ -85,6 +88,9 @@ prepare_core_repo_dir() {
   git clone --depth 1 --branch "${core_repo_ref}" "${core_repo_url}" "${CORE_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
     fail "could not clone productive-k3s-core from ${core_repo_url} (${core_repo_ref})"
   }
+  printf '[INFO] core ref=%s head=%s\n' \
+    "${core_repo_ref}" \
+    "$(git -C "${CORE_REPO_DIR_LOCAL}" rev-parse --short HEAD)"
 }
 
 prepare_addons_repo_dir() {
@@ -97,6 +103,9 @@ prepare_addons_repo_dir() {
   git clone --depth 1 --branch "${addons_repo_ref}" "${addons_repo_url}" "${ADDONS_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
     fail "could not clone productive-k3s-addons from ${addons_repo_url} (${addons_repo_ref})"
   }
+  printf '[INFO] addons ref=%s head=%s\n' \
+    "${addons_repo_ref}" \
+    "$(git -C "${ADDONS_REPO_DIR_LOCAL}" rev-parse --short HEAD)"
 }
 
 cleanup() {
