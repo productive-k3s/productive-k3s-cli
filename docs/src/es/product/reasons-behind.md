@@ -4,7 +4,7 @@ El CLI existe para resolver tres problemas concretos:
 
 ## Una sola superficie de comandos
 
-Los usuarios no deberían tener que memorizar entrypoints separados para Core e Infra. `pk3s` les da un solo ejecutable y un solo sistema de ayuda.
+Los usuarios no deberían tener que memorizar superficies de comandos separadas para Core e Infra. `pk3s` les da un solo ejecutable y un solo sistema de ayuda.
 
 ## Ejecución consciente de releases
 

@@ -53,6 +53,15 @@ scenario_script() {
     multipass)
       printf '%s/tests/live-cli-multipass-remote.sh\n' "${ROOT_DIR}"
       ;;
+    catalog-multipass)
+      printf '%s/tests/live-cli-catalog-multipass.sh\n' "${ROOT_DIR}"
+      ;;
+    stack-export-ubuntu24)
+      printf '%s/tests/live-cli-stack-export-ubuntu24.sh\n' "${ROOT_DIR}"
+      ;;
+    profile-export-multipass)
+      printf '%s/tests/live-cli-profile-export-multipass.sh\n' "${ROOT_DIR}"
+      ;;
     onprem-basic)
       printf '%s/tests/live-cli-onprem-remote.sh\n' "${ROOT_DIR}"
       ;;
@@ -67,6 +76,15 @@ scenario_environment() {
     multipass)
       printf 'vm\n'
       ;;
+    catalog-multipass)
+      printf 'vm\n'
+      ;;
+    stack-export-ubuntu24)
+      printf 'vm\n'
+      ;;
+    profile-export-multipass)
+      printf 'host-multipass\n'
+      ;;
     onprem-basic)
       printf 'on-prem\n'
       ;;
@@ -79,6 +97,15 @@ scenario_environment() {
 scenario_topology() {
   case "$1" in
     multipass)
+      printf 'three-node\n'
+      ;;
+    catalog-multipass)
+      printf 'three-node\n'
+      ;;
+    stack-export-ubuntu24)
+      printf 'single-node\n'
+      ;;
+    profile-export-multipass)
       printf 'three-node\n'
       ;;
     onprem-basic)
@@ -95,6 +122,15 @@ scenario_node_count() {
     multipass)
       printf '3\n'
       ;;
+    catalog-multipass)
+      printf '3\n'
+      ;;
+    stack-export-ubuntu24)
+      printf '1\n'
+      ;;
+    profile-export-multipass)
+      printf '3\n'
+      ;;
     onprem-basic)
       printf '2\n'
       ;;
@@ -102,6 +138,42 @@ scenario_node_count() {
       printf 'unknown\n'
       ;;
   esac
+}
+
+pk3s_source_mode() {
+  if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+    printf 'local\n'
+  else
+    printf 'remote\n'
+  fi
+}
+
+pk3s_core_version_label() {
+  if [[ "$(pk3s_source_mode)" == "local" ]]; then
+    if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_REF:-}" ]]; then
+      printf '%s\n' "${PRODUCTIVE_K3S_CORE_REPO_REF}"
+    elif [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}" ]]; then
+      printf 'checkout\n'
+    else
+      printf 'development\n'
+    fi
+  else
+    printf '%s\n' "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:-unknown}"
+  fi
+}
+
+pk3s_infra_version_label() {
+  if [[ "$(pk3s_source_mode)" == "local" ]]; then
+    if [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
+      printf '%s\n' "${PRODUCTIVE_K3S_INFRA_REPO_REF}"
+    elif [[ -n "${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}" ]]; then
+      printf 'checkout\n'
+    else
+      printf 'development\n'
+    fi
+  else
+    printf '%s\n' "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:-unknown}"
+  fi
 }
 
 write_run_manifest() {
@@ -135,9 +207,9 @@ write_run_manifest() {
     printf '  "duration_seconds": %s,\n' "${duration_seconds}"
     printf '  "pk3s": {\n'
     printf '    "binary": "%s",\n' "$(json_escape "${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}")"
-    printf '    "source": "remote",\n'
-    printf '    "core_version": "%s",\n' "$(json_escape "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:-unknown}")"
-    printf '    "infra_version": "%s"\n' "$(json_escape "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:-unknown}")"
+    printf '    "source": "%s",\n' "$(json_escape "$(pk3s_source_mode)")"
+    printf '    "core_version": "%s",\n' "$(json_escape "$(pk3s_core_version_label)")"
+    printf '    "infra_version": "%s"\n' "$(json_escape "$(pk3s_infra_version_label)")"
     printf '  },\n'
     printf '  "installation": {\n'
     printf '    "environment": "%s",\n' "$(json_escape "${environment}")"
@@ -156,6 +228,8 @@ skips=()
 fails=()
 
 mkdir -p "${ARTIFACTS_DIR}" "${RUNS_DIR}"
+find "${RUNS_DIR}" -maxdepth 1 -type f \( -name '*.json' -o -name '*.log' \) -delete 2>/dev/null || true
+rm -f "${ARTIFACTS_DIR}/live-summary.json"
 set -a
 # shellcheck disable=SC1090
 source "${ROOT_DIR}/scripts/release-config.sh"

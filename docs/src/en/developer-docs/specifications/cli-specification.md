@@ -34,7 +34,7 @@ Example:
 
 ```bash
 ./productive-k3s-core.sh preflight
-./productive-k3s-core.sh bootstrap
+./productive-k3s-core.sh apply
 ./productive-k3s-core.sh validate
 ./productive-k3s-core.sh backup
 ./productive-k3s-core.sh bundle info --json

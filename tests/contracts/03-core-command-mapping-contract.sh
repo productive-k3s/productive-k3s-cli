@@ -18,9 +18,13 @@ result = {
   "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
   "expected_mappings": {
     "pk3s doctor --core": "./productive-k3s-core.sh preflight",
-    "pk3s install --core-only": "./productive-k3s-core.sh bootstrap",
+    "pk3s install --core-only": "./productive-k3s-core.sh apply",
     "pk3s validate --core": "./productive-k3s-core.sh validate",
     "pk3s backup --core": "./productive-k3s-core.sh backup",
+    "pk3s addon validate --tgz ./demo-addon.tgz": "./productive-k3s-core.sh addon validate --tgz <file>",
+    "pk3s addon install --tgz ./demo-addon.tgz": "./productive-k3s-core.sh addon install --tgz <file>",
+    "pk3s addon export --tgz ./demo-addon.tgz --output ./bundle": "./productive-k3s-core.sh addon export --tgz <file> --output <path>",
+    "pk3s stack export --tgz ./demo-stack.tgz --output ./bundle": "./productive-k3s-core.sh stack export --tgz <file> --output <path>",
     "pk3s bundle core info --json": "./productive-k3s-core.sh bundle info --json"
   }
 }

@@ -6,17 +6,18 @@ El objetivo es acotado: probar que el CLI puede resolver bundles remotos publica
 
 ## Entry points
 
-Usá el target agregado:
+Usá los targets agregados:
 
 ```bash
 make test-live-remote
+make test-live-catalog
 ```
 
 O corré un único validador:
 
 ```bash
-./tests/run-cli-live.sh multipass
-./tests/run-cli-live.sh onprem-basic
+make -C tests test-live-remote SCENARIOS=multipass
+make -C tests test-live-remote SCENARIOS=onprem-basic
 ```
 
 ## Escenarios cubiertos
@@ -33,6 +34,19 @@ El validador:
 6. corre `pk3s destroy`
 
 Esto es la prueba más directa, a nivel CLI, de que el bundle remoto publicado de Infra sirve para el profile integrado de Multipass.
+
+### `catalog-multipass`
+
+El validador:
+
+1. fuerza resolución catalog-backed
+2. valida el package publicado de Multipass con `pk3s profile validate`
+3. corre `pk3s infra install`
+4. corre `pk3s infra status`
+5. corre `pk3s addon install`
+6. corre `pk3s infra destroy`
+
+Esto prueba la UX catalog-backed de packages contra un target real de Multipass.
 
 ### `onprem-basic`
 
@@ -71,9 +85,9 @@ Los manifests incluyen:
 
 ## Notas
 
-- Estos validadores están separados intencionalmente de `test-static`.
-- También requieren un toolchain local funcional de `Go`, porque `make test-live-remote` compila `pk3s` antes de correr las validaciones live.
+- Estos validadores están separados intencionalmente de `test-local-all`.
+- También requieren un toolchain local funcional de `Go`, porque los targets live compilan `pk3s` antes de correr las validaciones.
 - Requieren dependencias reales como `multipass`, `ssh`, `curl`, `tar` y `python3`.
 - `onprem-basic` no usa `pk3s destroy`, porque ese escenario no expone un contrato público de destroy. La limpieza se hace borrando las VMs temporales.
-- Usá `make test-checkstatus` para inspeccionar los artifacts del CLI.
-- Usá `make test-clean` para borrar el estado local de artifacts del CLI.
+- Usá `make -C tests test-checkstatus` para inspeccionar los artifacts del CLI.
+- Usá `make -C tests test-clean` para borrar el estado local de artifacts del CLI.

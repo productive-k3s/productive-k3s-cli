@@ -1,83 +1,62 @@
-.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean docs-publish-check test test-unit test-lint test-format test-spell test-coverage test-clean test-checkstatus test-static test-cli-contract test-cli-contract-clean test-live-remote test-live-gha-onprem-remote set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve test test-unit test-lint test-format test-spell test-local-all test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-clean-all set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
-ifneq ("$(wildcard /usr/local/go/bin/go)","")
-GO_BIN ?= /usr/local/go/bin/go
-else
 GO_BIN ?= go
-endif
 
 build:
-	$(SCRIPTS_DIR)/build-cli.sh build-local
+	GO_BIN=$(GO_BIN) $(SCRIPTS_DIR)/build-cli.sh build-local
 
 build-release:
-	$(SCRIPTS_DIR)/build-cli.sh build-release
+	GO_BIN=$(GO_BIN) $(SCRIPTS_DIR)/build-cli.sh build-release
 
 go-test:
 	$(GO_BIN) test ./...
 
-test: test-unit test-lint test-format test-spell
-
-test-unit:
-	bash ./tests/bin/run-go-tests.sh
-
-test-lint:
-	bash ./tests/bin/run-lint.sh
-
-test-format:
-	bash ./tests/bin/run-format-check.sh
-
-test-spell:
-	bash ./tests/bin/run-spellcheck.sh
-
-test-coverage:
-	bash ./tests/bin/run-coverage.sh
-
-test-static:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-static
-
 docs-build:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-build
+	$(MAKE) -C ./docs docs-build
 
 docs-serve:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-serve
+	$(MAKE) -C ./docs docs-serve
 
-docs-up:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-up
+test:
+	$(MAKE) -C ./tests test
 
-docs-down:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-down
+test-unit:
+	$(MAKE) -C ./tests test-unit
 
-docs-clean:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh docs-clean
+test-lint:
+	$(MAKE) -C ./tests test-lint
 
-docs-publish-check:
-	bash ./tests/test-docs-publishing.sh
-	bash ./tests/test-docs-structure.sh
+test-format:
+	$(MAKE) -C ./tests test-format
 
-test-clean:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-clean
+test-spell:
+	$(MAKE) -C ./tests test-spell
 
-test-checkstatus:
-	$(SCRIPTS_DIR)/productive-k3s-cli-dev.sh test-checkstatus
+test-local-all:
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-local-all
 
 test-cli-contract:
-	$(MAKE) build
+	GO_BIN="$(GO_BIN)" $(MAKE) build
 	bash ./tests/run-cli-contracts.sh
 
 test-live-remote:
-	$(MAKE) build
-	bash ./tests/run-cli-live.sh $(SCENARIOS)
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-live-remote SCENARIOS="$(SCENARIOS)"
+
+test-live-catalog:
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-live-catalog
+
+test-live-export:
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-live-export
 
 test-live-gha-onprem-remote:
-	$(MAKE) build
-	bash ./tests/live-cli-onprem-remote-github-host.sh
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-live-gha-onprem-remote
+
+test-clean-all:
+	$(MAKE) -C ./tests test-clean-all
 
 set-bundles-versions:
 	$(SCRIPTS_DIR)/set-bundles-versions.sh $(CORE_VERSION) $(INFRA_VERSION)
 
 tag-release:
 	$(SCRIPTS_DIR)/tag-release.sh $(VERSION)
-
-test-cli-contract-clean:
-	rm -rf test-artifacts/*

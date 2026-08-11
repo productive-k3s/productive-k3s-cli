@@ -28,7 +28,7 @@ Check:
 - `productive-k3s-core`
 - `productive-k3s-infra`
 
-Each one must expose its public entrypoint at the repository root.
+Each one must expose its public command surface at the repository root.
 
 ## A scenario command fails after delegation
 

@@ -6,17 +6,20 @@ The goal is narrow: prove that the CLI can resolve published remote bundles, acc
 
 ## Entry points
 
-Use the aggregate target:
+Use the aggregate targets:
 
 ```bash
 make test-live-remote
+make test-live-catalog
+make test-live-export
 ```
 
 Or run a single validator:
 
 ```bash
-./tests/run-cli-live.sh multipass
-./tests/run-cli-live.sh onprem-basic
+make -C tests test-live-remote SCENARIOS=multipass
+make -C tests test-live-remote SCENARIOS=onprem-basic
+make -C tests test-live-export
 ```
 
 ## Covered scenarios
@@ -33,6 +36,46 @@ The validator:
 6. runs `pk3s destroy`
 
 This is the closest CLI-level proof that the remote published Infra bundle is usable for the built-in Multipass profile.
+
+### `catalog-multipass`
+
+The validator:
+
+1. forces catalog-backed resolution
+2. validates the published Multipass profile package through `pk3s profile validate`
+3. runs `pk3s infra install`
+4. runs `pk3s infra status`
+5. runs `pk3s addon install`
+6. runs `pk3s infra destroy`
+
+This proves the catalog-backed package UX against a real local Multipass target.
+
+### `stack-export-ubuntu24`
+
+The validator:
+
+1. downloads the published `base` stack artifact
+2. runs `pk3s stack export --tgz ... --output ...`
+3. hands the generated installer to the validated Core VM harness
+4. boots an Ubuntu 24.04 VM
+5. runs the exported `install.sh`
+6. checks that the base stack namespaces exist
+
+This proves the public CLI path for `cli -> core -> exported installer`.
+
+### `profile-export-multipass`
+
+The validator:
+
+1. downloads the published Multipass profile artifact
+2. writes a temporary env override with a unique cluster name
+3. runs `pk3s profile export --tgz ... --env-file ... --output ...`
+4. extracts the generated installer
+5. runs the exported `install.sh`
+6. checks the bundled `productive-k3s-infra.sh profile status --tgz ...`
+7. verifies that three Multipass instances were created
+
+This proves the public CLI path for `cli -> infra -> exported installer`.
 
 ### `onprem-basic`
 
@@ -71,9 +114,9 @@ The manifests include:
 
 ## Notes
 
-- These validators are intentionally separate from `test-static`.
-- They also require a working local `Go` toolchain because `make test-live-remote` builds `pk3s` before running the live validators.
+- These validators are intentionally separate from `test-local-all`.
+- They also require a working local `Go` toolchain because the live targets build `pk3s` before running the validators.
 - They require real dependencies such as `multipass`, `ssh`, `curl`, `tar`, and `python3`.
 - `onprem-basic` does not use `pk3s destroy`, because that scenario does not expose a public destroy contract. Cleanup is done by deleting the temporary VMs.
-- Use `make test-checkstatus` to inspect recorded CLI artifacts.
-- Use `make test-clean` to remove local CLI test artifact state.
+- Use `make -C tests test-checkstatus` to inspect recorded CLI artifacts.
+- Use `make -C tests test-clean` to remove local CLI test artifact state.

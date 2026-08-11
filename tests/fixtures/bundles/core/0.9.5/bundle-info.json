@@ -3,7 +3,7 @@
   "schema_version": "1",
   "bundle_name": "productive-k3s-core",
   "bundle_type": "productive-k3s-core",
-  "bundle_version": "0.9.1",
+  "bundle_version": "0.9.5",
   "cli_entrypoint": "productive-k3s-core.sh",
   "platform": "any",
   "api_compatibility": {

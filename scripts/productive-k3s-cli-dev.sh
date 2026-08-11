@@ -3,14 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GO_BIN="${GO_BIN:-}"
-if [[ -z "${GO_BIN}" ]]; then
-  if [[ -x /usr/local/go/bin/go ]]; then
-    GO_BIN="/usr/local/go/bin/go"
-  else
-    GO_BIN="$(command -v go || true)"
-  fi
-fi
+GO_BIN="${GO_BIN:-$(command -v go || true)}"
 
 usage() {
   cat <<'USAGE'
@@ -24,10 +17,13 @@ Development commands:
   docs-down
   docs-clean
   docs-publish-check
+  test-local-all
   test-clean
+  test-clean-all
   test-checkstatus
-  test-static
   test-live-remote
+  test-live-catalog
+  test-live-export
   test-live-gha-onprem-remote
   set-bundles-versions
   tag-release
@@ -66,27 +62,26 @@ case "$COMMAND" in
     bash "${REPO_DIR}/tests/test-docs-publishing.sh"
     exec bash "${REPO_DIR}/tests/test-docs-structure.sh" "$@"
     ;;
+  test-local-all)
+    exec env GO_BIN="${GO_BIN}" make -C "${REPO_DIR}/tests" test-static-raw
+    ;;
   test-clean)
     exec bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
+    ;;
+  test-clean-all)
+    exec env TEST_SCOPE=all bash "${REPO_DIR}/tests/clean-test-state.sh" "$@"
     ;;
   test-checkstatus)
     exec bash "${REPO_DIR}/tests/check-test-status.sh" "$@"
     ;;
-  test-static)
-    need_cmd "${GO_BIN}"
-    "${GO_BIN}" test ./...
-    bash "${REPO_DIR}/tests/test-go-tooling.sh"
-    bash "${REPO_DIR}/tests/test-docs-publishing.sh"
-    bash "${REPO_DIR}/tests/test-docs-structure.sh"
-    bash "${REPO_DIR}/tests/test-release-versioning.sh"
-    bash "${REPO_DIR}/tests/test-set-bundles-versions.sh"
-    bash "${REPO_DIR}/tests/test-tag-release.sh"
-    bash "${REPO_DIR}/tests/test-live-artifacts.sh"
-    bash "${REPO_DIR}/tests/test-live-wiring.sh"
-    exec bash "${REPO_DIR}/tests/run-cli-contracts.sh"
-    ;;
   test-live-remote)
     exec bash "${REPO_DIR}/tests/run-cli-live.sh" "$@"
+    ;;
+  test-live-catalog)
+    exec bash "${REPO_DIR}/tests/run-cli-live.sh" catalog-multipass "$@"
+    ;;
+  test-live-export)
+    exec bash "${REPO_DIR}/tests/run-cli-live.sh" stack-export-ubuntu24 profile-export-multipass "$@"
     ;;
   test-live-gha-onprem-remote)
     exec bash "${REPO_DIR}/tests/live-cli-onprem-remote-github-host.sh" "$@"

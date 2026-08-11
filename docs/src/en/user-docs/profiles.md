@@ -1,6 +1,6 @@
 # Profiles
 
-Infra workflows are profile-driven.
+Infra workflows are profile-driven, and the CLI is the simplest way to consume those curated deployment paths.
 
 The CLI accepts a profile in two forms:
 

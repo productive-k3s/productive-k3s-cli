@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/jemacchi/productive-k3s-cli/internal/app"
+	"github.com/productive-k3s/productive-k3s-cli/internal/app"
 )
 
 func main() {

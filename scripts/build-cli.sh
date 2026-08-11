@@ -51,7 +51,7 @@ go_build() {
     cd "${REPO_DIR}"
     PATH="$(dirname "${GO_BIN}"):${PATH}" \
       "${GO_BIN}" build \
-      -ldflags "-X github.com/jemacchi/productive-k3s-cli/internal/app.Version=${VERSION}" \
+      -ldflags "-X github.com/productive-k3s/productive-k3s-cli/internal/app.Version=${VERSION}" \
       -o "${output_path}" \
       "$@"
   )

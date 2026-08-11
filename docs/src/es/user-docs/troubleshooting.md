@@ -1,4 +1,4 @@
-# Troubleshooting
+# Resolución De Problemas
 
 Si un comando de Core intenta instalar en el host local desde un sistema no soportado, el CLI corta antes de delegar y muestra la URL de documentación de plataformas soportadas.
 

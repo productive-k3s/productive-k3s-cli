@@ -106,30 +106,19 @@ func requiredRemoteBundlePaths(kind string) []string {
 			"bundle-info.json",
 			"scripts/productive-k3s-core.sh",
 			"scripts/preflight-host.sh",
-			"scripts/bootstrap-k3s-stack.sh",
-			"scripts/backup-k3s-stack.sh",
-			"scripts/validate-k3s-stack.sh",
+			"scripts/apply.sh",
+			"scripts/backup.sh",
+			"scripts/validate.sh",
+			"scripts/cleanup.sh",
+			"scripts/rollback.sh",
 			"scripts/send-telemetry.sh",
 		}
 	case "infra":
 		return []string{
+			"scripts/productive-k3s-infra.sh",
 			"scripts/release-config.sh",
-			"scenarios/multipass/opentofu/cloud-init/server.yaml",
-			"scenarios/multipass/opentofu/cloud-init/agent-1.yaml",
-			"scenarios/multipass/opentofu/cloud-init/agent-2.yaml",
-			"ansible/roles/remote_cluster/files/bootstrap-agents.sh",
-			"ansible/roles/remote_cluster/files/bootstrap-server.sh",
-			"ansible/roles/remote_cluster/files/bootstrap-stack.sh",
-			"ansible/roles/remote_cluster/files/cluster-up.sh",
-			"ansible/roles/remote_cluster/files/common.sh",
-			"ansible/roles/remote_cluster/files/preflight-productive-k3s-core.sh",
-			"ansible/roles/remote_cluster/files/preflight.sh",
-			"ansible/roles/remote_cluster/files/push-productive-k3s-core.sh",
-			"ansible/roles/remote_cluster/files/reconcile-cluster-defaults.sh",
-			"ansible/roles/remote_cluster/files/refresh-generated-artifacts.sh",
-			"ansible/roles/remote_cluster/files/run_remote_bootstrap_session.py",
-			"ansible/roles/remote_cluster/files/sync-hosts.sh",
-			"ansible/roles/remote_cluster/files/validate-cluster.sh",
+			"scripts/release.env",
+			"scripts/send-telemetry-event.sh",
 		}
 	default:
 		return nil

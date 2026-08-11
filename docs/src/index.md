@@ -4,102 +4,102 @@ template: "home.html"
 hide:
   - navigation
   - toc
-eyebrow: "Unified command line for Productive K3S"
-eyebrow_es: "Línea de comandos unificada para Productive K3S"
+eyebrow: "The simplest and recommended way to use Productive K3S"
+eyebrow_es: "La forma más simple y recomendada de usar Productive K3S"
 hero_title: "Productive K3S CLI"
 hero_title_es: "Productive K3S CLI"
-lead: "Productive K3S CLI provides one executable, `pk3s`, for working with Productive K3S Core and Productive K3S Infra through a consistent, release-aware command surface."
-lead_es: "Productive K3S CLI ofrece un único ejecutable, `pk3s`, para trabajar con Productive K3S Core y Productive K3S Infra mediante una superficie de comandos consistente y consciente de releases."
-sublead: "It resolves versioned bundles, validates their runtime contract, and delegates execution into the public Core and Infra entrypoints instead of reimplementing their logic."
-sublead_es: "Resuelve bundles versionados, valida su contrato de runtime y delega la ejecución hacia los entrypoints públicos de Core e Infra en lugar de reimplementar su lógica."
+lead: "Productive K3S CLI is the unified interface that makes the ecosystem easier to use without taking away the independence of Core or Infra."
+lead_es: "Productive K3S CLI es la interfaz unificada que vuelve más fácil de usar al ecosistema sin quitarle independencia a Core o Infra."
+sublead: "It is the recommended way to operate Productive K3S: one command surface, one user experience, and one simple interface over the real product contracts exposed by Core and Infra."
+sublead_es: "Es la forma recomendada de operar Productive K3S: una sola superficie de comandos, una sola experiencia de usuario y una interfaz simple por encima de los contratos reales de producto expuestos por Core e Infra."
 primary_label: "View on GitHub"
 primary_label_es: "Ver en GitHub"
-primary_url: "https://github.com/jemacchi/productive-k3s-cli"
+primary_url: "https://github.com/productive-k3s/productive-k3s-cli"
 secondary_label: "Open README"
 secondary_label_es: "Abrir README"
-secondary_url: "https://github.com/jemacchi/productive-k3s-cli/blob/main/README.md"
+secondary_url: "https://github.com/productive-k3s/productive-k3s-cli/blob/main/README.md"
 card_title: "What it does"
 card_title_es: "Qué hace"
 card_items:
-  - Resolves Productive K3S Core and Infra bundles from published releases
-  - Supports explicit local sibling mode for development and debugging
-  - Exposes one top-level help system and command surface for users
+  - Gives users one recommended interface for the ecosystem
+  - Resolves the right Core and Infra bundles without hiding where they come from
+  - Keeps direct component usage possible while making the normal path simpler
 card_items_es:
-  - Resuelve bundles de Productive K3S Core e Infra desde releases publicados
-  - Soporta modo local explícito con repos hermanos para desarrollo y debugging
-  - Expone un único sistema de ayuda y una única superficie de comandos para usuarios
+  - Les da a los usuarios una sola interfaz recomendada para el ecosistema
+  - Resuelve los bundles correctos de Core e Infra sin ocultar de dónde vienen
+  - Mantiene posible el uso directo de componentes mientras vuelve más simple el camino normal
 why_title: "Why it exists"
 why_title_es: "Por qué existe"
 why_options:
-  - label: "SPLIT ENTRYPOINTS"
-    text: "Separate Core and Infra commands are accurate, but harder for users to discover and operate consistently."
-  - label: "REWRITTEN PLATFORM"
-    text: "Rewriting Core and Infra logic inside the CLI would create drift, duplication, and fragile maintenance."
+  - label: "UNIFIED UX"
+    text: "Most users want one simple way to consume the ecosystem instead of learning each component interface separately."
+  - label: "REAL COMPONENTS"
+    text: "That simpler experience should still preserve the real Core and Infra contracts instead of reimplementing the platform inside the CLI."
 why_options_es:
-  - label: "ENTRYPOINTS SEPARADOS"
-    text: "Los comandos separados de Core e Infra son correctos, pero más difíciles de descubrir y operar consistentemente."
-  - label: "PLATAFORMA REESCRITA"
-    text: "Reescribir la lógica de Core e Infra dentro del CLI generaría drift, duplicación y mantenimiento frágil."
-bridge_note: "Productive K3S CLI is the middle path: one UX layer, explicit bundle resolution, and delegation into the real product contracts."
-bridge_note_es: "Productive K3S CLI es el camino intermedio: una sola capa de UX, resolución explícita de bundles y delegación hacia los contratos reales del producto."
+  - label: "UX UNIFICADA"
+    text: "La mayoría de los usuarios quiere una sola forma simple de consumir el ecosistema en lugar de aprender cada interfaz por separado."
+  - label: "COMPONENTES REALES"
+    text: "Esa experiencia más simple igual debe preservar los contratos reales de Core e Infra en lugar de reimplementar la plataforma dentro del CLI."
+bridge_note: "Productive K3S CLI is the recommended UX layer above the independent ecosystem components."
+bridge_note_es: "Productive K3S CLI es la capa de UX recomendada por encima de los componentes independientes del ecosistema."
 bridge_points:
   - Keep Core and Infra authoritative
-  - Make published releases first-class
-  - Give users one ergonomic entrypoint
+  - Give users one recommended interface
+  - Keep direct usage possible when deeper control matters
 bridge_points_es:
   - Mantener a Core e Infra como fuente autoritativa
-  - Tratar los releases publicados como ciudadanos de primera clase
-  - Dar a los usuarios un único entrypoint ergonómico
-scenarios_title: "Typical usage"
-scenarios_title_es: "Uso típico"
+  - Dar a los usuarios una sola interfaz recomendada
+  - Mantener posible el uso directo cuando importa un control más profundo
+scenarios_title: "How to use it"
+scenarios_title_es: "Cómo usarlo"
 scenarios:
-  - Run remote Multipass and on-prem scenarios from a workstation
-  - Validate profiles before provisioning
-  - Inspect the exact Core or Infra bundle selected for execution
-  - Use the same CLI locally in development and remotely through published releases
+  - Use CLI when you want the simplest and recommended Productive K3S experience
+  - Use Core directly when you want the most explicit base installation contract
+  - Use Infra directly when you want explicit control over the deployment layer
+  - Keep the same CLI path across development and published releases
 scenarios_es:
-  - Ejecutar escenarios remotos de Multipass y on-prem desde una workstation
-  - Validar profiles antes de aprovisionar
-  - Inspeccionar el bundle exacto de Core o Infra elegido para ejecutar
-  - Usar el mismo CLI localmente en desarrollo y remotamente mediante releases publicados
+  - Usá CLI cuando quieras la experiencia Productive K3S más simple y recomendada
+  - Usá Core directo cuando quieras el contrato base de instalación más explícito
+  - Usá Infra directo cuando quieras control explícito de la capa de despliegue
+  - Mantené el mismo camino de CLI entre desarrollo y releases publicados
 principles_title: "Design principles"
 principles_title_es: "Principios de diseño"
 principles:
   - title: "Delegate, do not duplicate"
     text: "the CLI should route into Core and Infra, not absorb their implementation"
-  - title: "Remote first"
-    text: "published bundles are the default user path and must be validated as products"
-  - title: "Explicit local mode"
-    text: "development workflows can still target sibling repositories when requested"
+  - title: "Recommended, not mandatory"
+    text: "the best normal path should stay simple without pretending the underlying components stopped existing"
+  - title: "Keep provenance visible"
+    text: "bundle resolution and component boundaries should remain understandable"
 principles_es:
   - title: "Delegar, no duplicar"
     text: "el CLI debe derivar hacia Core e Infra, no absorber su implementación"
-  - title: "Remote first"
-    text: "los bundles publicados son el camino por defecto para usuarios y deben validarse como producto"
-  - title: "Modo local explícito"
-    text: "los flujos de desarrollo pueden seguir apuntando a repos hermanos cuando se lo pide"
+  - title: "Recomendado, no obligatorio"
+    text: "el mejor camino normal debe seguir siendo simple sin fingir que los componentes subyacentes dejaron de existir"
+  - title: "Dejá visible la procedencia"
+    text: "la resolución de bundles y los límites entre componentes deben seguir siendo entendibles"
 environments_title: "Where it fits"
 environments_title_es: "Dónde encaja"
 environments:
-  - User laptops and operator workstations
-  - CI pipelines validating published Productive K3S bundles
-  - Development setups consuming local sibling repositories explicitly
-  - Cross-platform CLI distribution for Linux, macOS, and Windows
+  - The recommended user-facing path across the ecosystem
+  - Operator workstations that need one coherent command surface
+  - Development setups that still benefit from a unified interface
+  - Cross-platform use on Linux, macOS, and Windows
 environments_es:
-  - Laptops de usuarios y workstations operativas
-  - Pipelines de CI que validan bundles publicados de Productive K3S
-  - Setups de desarrollo que consumen explícitamente repos hermanos locales
-  - Distribución cross-platform del CLI para Linux, macOS y Windows
+  - El camino recomendado orientado a usuarios a través del ecosistema
+  - Workstations operativas que necesitan una sola superficie coherente de comandos
+  - Setups de desarrollo que igual se benefician de una interfaz unificada
+  - Uso cross-platform en Linux, macOS y Windows
 not_title: "What it is not"
 not_title_es: "Qué no es"
 not_items:
   - Not a replacement for Productive K3S Core
   - Not a replacement for Productive K3S Infra
-  - Not an excuse to hide version resolution or bundle provenance
+  - Not a reason to hide component boundaries
 not_items_es:
   - No reemplaza a Productive K3S Core
   - No reemplaza a Productive K3S Infra
-  - No es una excusa para ocultar la resolución de versiones o la procedencia de bundles
-not_note: "It is the UX and release-aware orchestration layer above Core and Infra."
-not_note_es: "Es la capa de UX y orquestación consciente de releases por encima de Core e Infra."
+  - No es una razón para ocultar los límites entre componentes
+not_note: "It is the simplest and recommended interface for using Productive K3S."
+not_note_es: "Es la interfaz más simple y recomendada para usar Productive K3S."
 ---

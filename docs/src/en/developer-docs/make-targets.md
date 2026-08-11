@@ -11,22 +11,32 @@ This requirement is specific to `productive-k3s-cli`, because this repository bu
 ```bash
 make build
 make build-release
-make test
 make go-test
-make test-unit
-make test-lint
-make test-format
-make test-spell
-make test-coverage
-make test-static
-make test-cli-contract
-make test-live-gha-onprem-remote
+make test-local-all
+make test-live-remote
+make test-live-catalog
+make test-clean-all
 make docs-build
 make docs-serve
-make test-checkstatus
-make test-clean
 make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.41-0.9.1
 make tag-release VERSION=1.0.1
+```
+
+Detailed targets live under `tests/` and `docs/`:
+
+```bash
+make -C tests test-unit
+make -C tests test-lint
+make -C tests test-format
+make -C tests test-spell
+make -C tests test-coverage
+make -C tests test-cli-contract
+make -C tests test-live-gha-onprem-remote
+make -C tests test-checkstatus
+make -C tests test-clean
+make -C docs docs-up
+make -C docs docs-down
+make -C docs docs-clean
 ```
 
 These commands intentionally mirror the conventions already used in Productive K3S Core and Productive K3S Infra.
