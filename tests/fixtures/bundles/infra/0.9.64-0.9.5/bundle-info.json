@@ -3,7 +3,7 @@
   "schema_version": "1",
   "bundle_name": "productive-k3s-infra",
   "bundle_type": "productive-k3s-infra",
-  "bundle_version": "0.9.63-0.9.5",
+  "bundle_version": "0.9.64-0.9.5",
   "cli_entrypoint": "productive-k3s-infra.sh",
   "platform": "any",
   "core_dependency": {

@@ -10,8 +10,8 @@
   },
   "infra": {
     "bundle_name": "productive-k3s-infra",
-    "bundle_version": "0.9.63-0.9.5",
+    "bundle_version": "0.9.64-0.9.5",
     "source": "local",
-    "path": "tests/fixtures/bundles/infra/0.9.63-0.9.5"
+    "path": "tests/fixtures/bundles/infra/0.9.64-0.9.5"
   }
 }

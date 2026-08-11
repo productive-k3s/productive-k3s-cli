@@ -33,7 +33,7 @@ assert_eq "${PRODUCTIVE_K3S_INFRA_REPO_NAME_DEFAULT}" "productive-k3s-infra" "de
 assert_eq "${PRODUCTIVE_K3S_PROFILES_REPO_NAME_DEFAULT}" "productive-k3s-profiles" "default profiles repo name"
 assert_eq "${PRODUCTIVE_K3S_CLI_REPO_NAME_DEFAULT}" "productive-k3s-cli" "default cli repo name"
 assert_eq "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "0.9.5" "default core version"
-assert_eq "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT}" "0.9.63-0.9.5" "default infra version"
+assert_eq "${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT}" "0.9.64-0.9.5" "default infra version"
 assert_eq "${PRODUCTIVE_K3S_CORE_RELEASE_REPO_DEFAULT}" "productive-k3s/productive-k3s-core" "default core release repo"
 assert_eq "${PRODUCTIVE_K3S_INFRA_RELEASE_REPO_DEFAULT}" "productive-k3s/productive-k3s-infra" "default infra release repo"
 assert_eq "${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL_DEFAULT}" "https://github.com/productive-k3s/productive-k3s-core.git" "default core git remote url"
