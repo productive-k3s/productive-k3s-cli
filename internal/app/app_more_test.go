@@ -457,21 +457,21 @@ entries:
     kind: profile
     visibility: public
     category: local
-    version: 0.9.63-0.9.5
+    version: 0.9.64-0.9.5
     artifact:
       type: tgz
-      url: SERVER_URL/infra/multipass-1-server-2-agents-0.9.63-0.9.5.tgz
+      url: SERVER_URL/infra/multipass-1-server-2-agents-0.9.64-0.9.5.tgz
   - id: aws-single-node-basic
     name: aws-single-node-basic
     kind: profile
     visibility: public
     category: cloud
-    version: 0.9.63-0.9.5
+    version: 0.9.64-0.9.5
     install:
       requiresLocalOverrides: true
     artifact:
       type: tgz
-      url: SERVER_URL/infra/aws-single-node-basic-0.9.63-0.9.5.tgz
+      url: SERVER_URL/infra/aws-single-node-basic-0.9.64-0.9.5.tgz
 `, "SERVER_URL", server.URL)))
 	}))
 	defer server.Close()
@@ -489,10 +489,10 @@ entries:
 	if code != 0 {
 		t.Fatalf("expected profile list to succeed, got %d", code)
 	}
-	if got := stdout.String(); !strings.Contains(got, "multipass-1-server-2-agents\t0.9.63-0.9.5\tlocal") {
+	if got := stdout.String(); !strings.Contains(got, "multipass-1-server-2-agents\t0.9.64-0.9.5\tlocal") {
 		t.Fatalf("expected catalog-backed local profile listing, got %q", got)
 	}
-	if got := stdout.String(); !strings.Contains(got, "aws-single-node-basic\t0.9.63-0.9.5\tcloud\tneeds-env") {
+	if got := stdout.String(); !strings.Contains(got, "aws-single-node-basic\t0.9.64-0.9.5\tcloud\tneeds-env") {
 		t.Fatalf("expected catalog-backed needs-env marker, got %q", got)
 	}
 

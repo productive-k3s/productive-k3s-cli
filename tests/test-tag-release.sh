@@ -79,9 +79,9 @@ git -C "${infra_seed}" config user.email tester@example.com
 printf 'infra\n' > "${infra_seed}/README.md"
 git -C "${infra_seed}" add README.md
 git -C "${infra_seed}" commit -m "seed" >/dev/null
-git -C "${infra_seed}" tag 0.9.63-0.9.5
+git -C "${infra_seed}" tag 0.9.64-0.9.5
 git -C "${infra_seed}" remote add origin "${INFRA_REMOTE}"
-git -C "${infra_seed}" push --quiet origin HEAD refs/tags/0.9.63-0.9.5
+git -C "${infra_seed}" push --quiet origin HEAD refs/tags/0.9.64-0.9.5
 
 output="$(
   cd "${WORKTREE}" && \
