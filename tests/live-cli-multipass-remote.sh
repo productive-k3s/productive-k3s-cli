@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/release-config.sh"
-PROFILE_URL="${PK3S_CLI_MULTIPASS_PROFILE_URL:-${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}}"
+PROFILE_NAME="${PK3S_CLI_MULTIPASS_PROFILE_NAME:-multipass-1-server-2-agents}"
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
 WORK_DIR="$(mktemp -d "${ROOT_DIR}/.live-cli-multipass.XXXXXX")"
 PROFILES_REPO_DIR=""
@@ -30,8 +30,10 @@ prepare_profiles_repo_dir() {
   local profiles_source_dir="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}"
   local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}}"
   local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}}"
+  local infra_repo_dir=""
 
   prepare_infra_repo_dir
+  infra_repo_dir="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}"
   PROFILES_REPO_DIR="${WORK_DIR}/productive-k3s-profiles"
 
   if [[ -n "${profiles_source_dir}" ]]; then
@@ -47,9 +49,9 @@ prepare_profiles_repo_dir() {
   fi
 
   mkdir -p "${PROFILES_REPO_DIR}/ansible" "${PROFILES_REPO_DIR}/scripts" "${PROFILES_REPO_DIR}/tests"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/tests/." "${PROFILES_REPO_DIR}/tests/"
+  cp -a "${infra_repo_dir}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
+  cp -a "${infra_repo_dir}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
+  cp -a "${infra_repo_dir}/tests/." "${PROFILES_REPO_DIR}/tests/"
 }
 
 prepare_infra_repo_dir() {
@@ -119,7 +121,7 @@ fallback_cleanup() {
 }
 
 initial_cleanup() {
-  run_pk3s destroy --profile "${PROFILE_URL}" >/dev/null 2>&1 || true
+  run_pk3s infra destroy "${PROFILE_NAME}" >/dev/null 2>&1 || true
   fallback_cleanup
 }
 
@@ -139,11 +141,11 @@ need_cmd git
 trap cleanup EXIT
 initial_cleanup
 
-run_pk3s profile validate --profile "${PROFILE_URL}"
-run_pk3s plan --profile "${PROFILE_URL}"
-run_pk3s apply --profile "${PROFILE_URL}"
-run_pk3s status --profile "${PROFILE_URL}"
-run_pk3s destroy --profile "${PROFILE_URL}"
+run_pk3s profile validate "${PROFILE_NAME}"
+run_pk3s infra plan "${PROFILE_NAME}"
+run_pk3s infra apply "${PROFILE_NAME}"
+run_pk3s infra status "${PROFILE_NAME}"
+run_pk3s infra destroy "${PROFILE_NAME}"
 
 trap - EXIT
 fallback_cleanup

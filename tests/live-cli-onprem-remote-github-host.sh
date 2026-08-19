@@ -41,8 +41,10 @@ prepare_profiles_repo_dir() {
   local profiles_source_dir="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-}"
   local profiles_repo_url="${PRODUCTIVE_K3S_PROFILES_REPO_URL:-${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}}"
   local profiles_repo_ref="${PRODUCTIVE_K3S_PROFILES_REPO_REF:-${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}}"
+  local infra_repo_dir=""
 
   prepare_infra_repo_dir
+  infra_repo_dir="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}"
   PROFILES_REPO_DIR="${WORK_DIR}/productive-k3s-profiles"
 
   if [[ -n "${profiles_source_dir}" ]]; then
@@ -58,9 +60,9 @@ prepare_profiles_repo_dir() {
   fi
 
   mkdir -p "${PROFILES_REPO_DIR}/ansible" "${PROFILES_REPO_DIR}/scripts" "${PROFILES_REPO_DIR}/tests"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
-  cp -a "${INFRA_REPO_DIR_LOCAL}/tests/." "${PROFILES_REPO_DIR}/tests/"
+  cp -a "${infra_repo_dir}/ansible/." "${PROFILES_REPO_DIR}/ansible/"
+  cp -a "${infra_repo_dir}/scripts/." "${PROFILES_REPO_DIR}/scripts/"
+  cp -a "${infra_repo_dir}/tests/." "${PROFILES_REPO_DIR}/tests/"
 }
 
 prepare_infra_repo_dir() {

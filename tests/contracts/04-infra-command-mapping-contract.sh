@@ -27,7 +27,7 @@ result = {
     "pk3s infra apply --tgz ./demo-profile.tgz": "./productive-k3s-infra.sh profile apply --tgz <file>",
     "pk3s infra destroy --tgz ./demo-profile.tgz": "./productive-k3s-infra.sh profile destroy --tgz <file>",
     "pk3s infra status --tgz ./demo-profile.tgz": "./productive-k3s-infra.sh profile status --tgz <file>",
-    "pk3s profile validate edge-arm": "./productive-k3s-infra.sh validate-profile --profile <file>",
+    "pk3s profile validate edge-arm": "./productive-k3s-infra.sh validate --profile <file>",
     "pk3s plan --profile edge-arm": "./productive-k3s-infra.sh plan --profile <file>",
     "pk3s apply --profile edge-arm": "./productive-k3s-infra.sh apply --profile <file>",
     "pk3s destroy --profile edge-arm": "./productive-k3s-infra.sh destroy --profile <file>",

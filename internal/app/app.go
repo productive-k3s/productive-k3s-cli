@@ -327,7 +327,7 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 	case "validate":
 		if value, found := firstNonFlagArg(args[1:]); found && !contains(args[1:], "--tgz") && !contains(args[1:], "--profile") && !isHTTPAssetURL(value) && !statFile(value) && !looksLikeLocalTGZPath(value) {
 			if profile, ok := lookupProfilePath(value, deps); ok {
-				return delegate(ctx, deps, "infra", false, []string{"validate-profile", "--profile", profile}, nil, maybeCLITelemetryContext("profile-validate", "infra", true, deps, telemetryOverride))
+				return delegate(ctx, deps, "infra", false, []string{"validate", "--profile", profile}, nil, maybeCLITelemetryContext("profile-validate", "infra", true, deps, telemetryOverride))
 			}
 			tgz, err := resolveCatalogTGZ(ctx, deps, "profile", value)
 			if err == nil {
@@ -346,7 +346,7 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 		if code != 0 {
 			return code
 		}
-		return delegate(ctx, deps, "infra", false, []string{"validate-profile", "--profile", profile}, nil, maybeCLITelemetryContext("profile-validate", "infra", true, deps, telemetryOverride))
+		return delegate(ctx, deps, "infra", false, []string{"validate", "--profile", profile}, nil, maybeCLITelemetryContext("profile-validate", "infra", true, deps, telemetryOverride))
 	case "install":
 		filteredArgs, env, code := parsePackageEnvFile(args[1:], deps.Stderr)
 		if code != 0 {
