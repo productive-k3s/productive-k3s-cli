@@ -443,13 +443,13 @@ func TestRunProfileValidateDownloadsHTTPProfileAndDelegates(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	if len(got.Args) != 3 || got.Args[0] != "validate" || got.Args[1] != "--profile" {
+	if len(got.Args) != 5 || got.Args[0] != "dev" || got.Args[1] != "profile" || got.Args[2] != "validate" || got.Args[3] != "--profile-env" {
 		t.Fatalf("unexpected delegated args: %#v", got.Args)
 	}
-	if got.Args[2] == server.URL+"/profile.env" {
+	if got.Args[4] == server.URL+"/profile.env" {
 		t.Fatalf("expected downloaded local path, got URL")
 	}
-	if _, err := os.Stat(got.Args[2]); err != nil {
+	if _, err := os.Stat(got.Args[4]); err != nil {
 		t.Fatalf("expected downloaded profile to exist: %v", err)
 	}
 }

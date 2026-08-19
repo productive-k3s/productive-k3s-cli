@@ -42,6 +42,10 @@ warn() {
   printf '[WARN] %s\n' "$*" >&2
 }
 
+step() {
+  printf '[INFO] step=%s\n' "$*"
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
 }
@@ -242,6 +246,28 @@ run_pk3s() {
     "${PK3S_BIN}" "$@"
 }
 
+run_onprem_cluster_up() {
+  local scenario_dir=""
+
+  prepare_profiles_repo_dir
+  prepare_core_repo_dir
+  prepare_addons_repo_dir
+
+  scenario_dir="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}/scenarios/edge/onprem-basic"
+  [[ -d "${scenario_dir}" ]] || fail "onprem scenario directory not found: ${scenario_dir}"
+
+  ONPREM_ENV_FILE="${ENV_FILE}" \
+    PRODUCTIVE_K3S_SOURCE=local \
+    PRODUCTIVE_K3S_INFRA_REPO_DIR="${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}" \
+    PRODUCTIVE_K3S_PROFILES_REPO_DIR="${PRODUCTIVE_K3S_PROFILES_REPO_DIR:-${PROFILES_REPO_DIR}}" \
+    PRODUCTIVE_K3S_REPO="${PRODUCTIVE_K3S_REPO:-${CORE_REPO_DIR_LOCAL}}" \
+    PRODUCTIVE_K3S_ADDONS_REPO_DIR="${PRODUCTIVE_K3S_ADDONS_REPO_DIR:-${ADDONS_REPO_DIR_LOCAL}}" \
+    PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS="${PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS:-true}" \
+    PRODUCTIVE_K3S_AUTO_APPROVE_APPLY_PLAN="${PRODUCTIVE_K3S_AUTO_APPROVE_APPLY_PLAN:-true}" \
+    TELEMETRY_ENABLED=false \
+    make -C "${scenario_dir}" cluster-up
+}
+
 cleanup() {
   multipass delete "${SERVER_NAME}" "${AGENT_NAME}" >/dev/null 2>&1 || true
   multipass purge >/dev/null 2>&1 || true
@@ -293,10 +319,15 @@ PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS=true
 TELEMETRY_ENABLED=false
 EOF
 
+step "profile-validate"
 run_pk3s profile validate --profile "${ENV_FILE}"
+step "plan"
 run_pk3s plan --profile "${ENV_FILE}"
-run_pk3s apply --profile "${ENV_FILE}"
+step "cluster-up"
+run_onprem_cluster_up
+step "status"
 run_pk3s status --profile "${ENV_FILE}"
+step "assert-remote-cluster"
 assert_remote_cluster "${SERVER_IP}"
 
 printf '[PASS] onprem-basic remote CLI validation completed\n'
