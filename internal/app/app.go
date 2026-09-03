@@ -943,6 +943,7 @@ func delegate(ctx context.Context, deps Dependencies, kind string, requiresCoreH
 	for k, v := range env {
 		extraEnv[k] = v
 	}
+	propagateLegacyCoreRepoDir(extraEnv)
 	if telemetry != nil {
 		for k, v := range telemetry.childEnv() {
 			extraEnv[k] = v
@@ -999,6 +1000,7 @@ func resolveDelegatedBOM(ctx context.Context, deps Dependencies, kind string) (m
 	}
 
 	extraEnv := map[string]string{}
+	propagateLegacyCoreRepoDir(extraEnv)
 	if ref.Source == "remote" {
 		extraEnv["PRODUCTIVE_K3S_SOURCE"] = "remote"
 		extraEnv["PRODUCTIVE_K3S_VERSION"] = bundles.DefaultReleaseManifest().CoreVersion
@@ -1069,6 +1071,23 @@ func resolveDelegatedBOM(ctx context.Context, deps Dependencies, kind string) (m
 		"entrypoint": ref.Entrypoint,
 	}
 	return resolved, nil
+}
+
+func propagateLegacyCoreRepoDir(extraEnv map[string]string) {
+	if extraEnv == nil {
+		return
+	}
+	coreDir := strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_CORE_REPO_DIR"))
+	legacy := strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_REPO"))
+	if coreDir != "" {
+		extraEnv["PRODUCTIVE_K3S_REPO"] = coreDir
+		extraEnv["PK3S_PROFILE_PACKAGE_PRODUCTIVE_K3S_REPO"] = coreDir
+		return
+	}
+	if legacy != "" {
+		extraEnv["PRODUCTIVE_K3S_CORE_REPO_DIR"] = legacy
+		extraEnv["PK3S_PROFILE_PACKAGE_PRODUCTIVE_K3S_REPO"] = legacy
+	}
 }
 
 func requestedSourceMode() string {
