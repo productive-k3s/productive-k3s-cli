@@ -2,6 +2,7 @@ package app
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -18,9 +19,15 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/productive-k3s/productive-k3s-cli/internal/bundles"
+	"github.com/productive-k3s/productive-k3s-cli/internal/clusters"
+	"github.com/productive-k3s/productive-k3s-cli/internal/kubeconfig"
 	"github.com/productive-k3s/productive-k3s-cli/internal/platform"
+	"github.com/productive-k3s/productive-k3s-cli/internal/tools"
+	"github.com/productive-k3s/productive-k3s-cli/internal/tui"
 )
 
 var Version = "1.0.0"
@@ -35,6 +42,7 @@ type Dependencies struct {
 	HTTPClient *http.Client
 	Exec       func(context.Context, Invocation) error
 	RunOutput  func(context.Context, Invocation) ([]byte, error)
+	RunTUI     func(context.Context, Dependencies) int
 }
 
 type Invocation struct {
@@ -57,6 +65,7 @@ func DefaultDependencies() Dependencies {
 		HTTPClient: http.DefaultClient,
 		Exec:       osExec,
 		RunOutput:  osExecOutput,
+		RunTUI:     runTUI,
 	}
 }
 
@@ -89,6 +98,9 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 	if deps.RunOutput == nil {
 		deps.RunOutput = osExecOutput
 	}
+	if deps.RunTUI == nil {
+		deps.RunTUI = runTUI
+	}
 
 	if len(args) == 0 {
 		printRootHelp(deps.Stdout)
@@ -107,12 +119,16 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 	case "version":
 		fmt.Fprintln(deps.Stdout, Version)
 		return 0
+	case "ui":
+		return deps.RunTUI(ctx, deps)
 	case "bom":
 		return runBOM(ctx, args[1:], deps)
 	case "config":
 		return runConfig(args[1:], deps)
 	case "bundle":
 		return runBundle(ctx, args[1:], deps)
+	case "cluster":
+		return runCluster(ctx, args[1:], deps)
 	case "profile":
 		return runProfile(ctx, args[1:], deps, telemetryOverride)
 	case "infra":
@@ -136,6 +152,107 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 		printRootHelp(deps.Stderr)
 		return 2
 	}
+}
+
+func runTUI(ctx context.Context, deps Dependencies) int {
+	runner := func(ctx context.Context, args []string) tui.CommandResult {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		childDeps := deps
+		childDeps.Stdout = &stdout
+		childDeps.Stderr = &stderr
+		childDeps.Exec = func(ctx context.Context, invocation Invocation) error {
+			cmd := exec.CommandContext(ctx, invocation.Path, invocation.Args...)
+			cmd.Dir = invocation.Dir
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			cmd.Stdin = os.Stdin
+			cmd.Env = invocation.Env
+			return cmd.Run()
+		}
+		childDeps.RunTUI = func(context.Context, Dependencies) int {
+			fmt.Fprintln(&stderr, "nested TUI invocation is not supported")
+			return 2
+		}
+		code := Run(ctx, args, childDeps)
+		return tui.CommandResult{
+			Args:   args,
+			Code:   code,
+			Stdout: stdout.String(),
+			Stderr: stderr.String(),
+		}
+	}
+	streamRunner := func(ctx context.Context, args []string, eventSink func(tui.OperationEvent), logSink func(string)) tui.CommandResult {
+		var stdout safeBuffer
+		var stderr safeBuffer
+		var eventsMu sync.Mutex
+		var events []tui.OperationEvent
+		recordEvent := func(event tui.OperationEvent) {
+			eventsMu.Lock()
+			events = append(events, event)
+			eventsMu.Unlock()
+			if eventSink != nil {
+				eventSink(event)
+			}
+		}
+		childDeps := deps
+		childDeps.Stdout = streamWriter{buffer: &stdout, sink: logSink}
+		childDeps.Stderr = streamWriter{buffer: &stderr, sink: logSink}
+		childDeps.Exec = func(ctx context.Context, invocation Invocation) error {
+			if commandSupportsOperationEvents(invocation) {
+				return runEventedInvocation(ctx, invocation, recordEvent, logSink, &stdout, &stderr)
+			}
+			cmd := exec.CommandContext(ctx, invocation.Path, invocation.Args...)
+			cmd.Dir = invocation.Dir
+			cmd.Stdout = streamWriter{buffer: &stdout, sink: logSink}
+			cmd.Stderr = streamWriter{buffer: &stderr, sink: logSink}
+			cmd.Stdin = os.Stdin
+			cmd.Env = invocation.Env
+			return cmd.Run()
+		}
+		childDeps.RunTUI = func(context.Context, Dependencies) int {
+			fmt.Fprintln(childDeps.Stderr, "nested TUI invocation is not supported")
+			return 2
+		}
+		code := Run(ctx, args, childDeps)
+		eventsMu.Lock()
+		resultEvents := append([]tui.OperationEvent(nil), events...)
+		eventsMu.Unlock()
+		return tui.CommandResult{
+			Args:   args,
+			Code:   code,
+			Stdout: stdout.String(),
+			Stderr: stderr.String(),
+			Events: resultEvents,
+		}
+	}
+	interactive := func(ctx context.Context, args []string) tea.Cmd {
+		if len(args) != 3 || args[0] != "cluster" || args[1] != "k9s" {
+			return func() tea.Msg {
+				return tui.InteractiveFinished(args, fmt.Errorf("unsupported interactive command: pk3s %s", strings.Join(args, " ")))
+			}
+		}
+		reg, err := clusterRegistry()
+		if err != nil {
+			return func() tea.Msg { return tui.InteractiveFinished(args, err) }
+		}
+		invocation, err := clusterK9sInvocation(reg, args[2])
+		if err != nil {
+			return func() tea.Msg { return tui.InteractiveFinished(args, err) }
+		}
+		cmd := exec.CommandContext(ctx, invocation.Path, invocation.Args...)
+		cmd.Dir = invocation.Dir
+		cmd.Env = invocation.Env
+		return tea.ExecProcess(cmd, func(err error) tea.Msg {
+			return tui.InteractiveFinished(args, err)
+		})
+	}
+	model := tui.NewModelInteractive(ctx, runner, interactive).WithStreamRunner(streamRunner)
+	if err := tui.RunModel(deps.Stdout, model); err != nil {
+		fmt.Fprintf(deps.Stderr, "TUI failed: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 func runConfig(args []string, deps Dependencies) int {
@@ -249,6 +366,283 @@ func runBundle(ctx context.Context, args []string, deps Dependencies) int {
 		extra = append(extra, args[2:]...)
 	}
 	return delegate(ctx, deps, kind, false, extra, nil, nil)
+}
+
+func runCluster(ctx context.Context, args []string, deps Dependencies) int {
+	if len(args) == 0 {
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster <list|show|register|remove|test|kubectl|k9s|tools> [flags]")
+		return 2
+	}
+	reg, err := clusterRegistry()
+	if err != nil {
+		fmt.Fprintf(deps.Stderr, "could not resolve cluster registry: %v\n", err)
+		return 1
+	}
+	switch args[0] {
+	case "list":
+		return runClusterList(reg, deps)
+	case "show":
+		if len(args) < 2 {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster show <cluster-id>")
+			return 2
+		}
+		return runClusterShow(reg, args[1], deps)
+	case "register":
+		return runClusterRegister(reg, args[1:], deps)
+	case "remove":
+		if len(args) < 2 {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster remove <cluster-id>")
+			return 2
+		}
+		if err := reg.Delete(args[1]); err != nil {
+			fmt.Fprintln(deps.Stderr, err.Error())
+			return 2
+		}
+		fmt.Fprintf(deps.Stdout, "Removed cluster %s\n", args[1])
+		return 0
+	case "tools":
+		return runClusterTools(deps)
+	case "test":
+		if len(args) < 2 {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster test <cluster-id>")
+			return 2
+		}
+		return runClusterKubectl(ctx, reg, args[1], []string{"get", "nodes"}, deps)
+	case "kubectl":
+		if len(args) < 2 {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster kubectl <cluster-id> -- <kubectl-args>")
+			return 2
+		}
+		forwarded := args[2:]
+		if len(forwarded) > 0 && forwarded[0] == "--" {
+			forwarded = forwarded[1:]
+		}
+		if len(forwarded) == 0 {
+			forwarded = []string{"get", "nodes"}
+		}
+		return runClusterKubectl(ctx, reg, args[1], forwarded, deps)
+	case "k9s":
+		if len(args) < 2 {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster k9s <cluster-id>")
+			return 2
+		}
+		return runClusterK9s(ctx, reg, args[1], deps)
+	default:
+		fmt.Fprintf(deps.Stderr, "Unsupported cluster command: %s\n", args[0])
+		return 2
+	}
+}
+
+func clusterRegistry() (clusters.Registry, error) {
+	path, err := clusters.DefaultRegistryPath()
+	if err != nil {
+		return clusters.Registry{}, err
+	}
+	return clusters.NewRegistry(path), nil
+}
+
+func runClusterList(reg clusters.Registry, deps Dependencies) int {
+	items, err := reg.List()
+	if err != nil {
+		fmt.Fprintf(deps.Stderr, "could not read cluster registry: %v\n", err)
+		return 1
+	}
+	for _, cluster := range items {
+		line := cluster.ID
+		if cluster.Status != "" {
+			line += "\t" + cluster.Status
+		}
+		if cluster.Context != "" {
+			line += "\t" + cluster.Context
+		}
+		if cluster.Profile != "" {
+			line += "\t" + cluster.Profile
+		}
+		fmt.Fprintln(deps.Stdout, line)
+	}
+	return 0
+}
+
+func runClusterShow(reg clusters.Registry, id string, deps Dependencies) int {
+	cluster, err := reg.Get(id)
+	if err != nil {
+		fmt.Fprintln(deps.Stderr, err.Error())
+		return 2
+	}
+	renderCluster(deps.Stdout, cluster)
+	return 0
+}
+
+func runClusterRegister(reg clusters.Registry, args []string, deps Dependencies) int {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s cluster register <cluster-id> --kubeconfig <file> [--name <name>] [--type <type>] [--context <context>] [--api-server <url>] [--profile <name>] [--status <status>]")
+		return 2
+	}
+	id := kubeconfig.SafeName(args[0])
+	flags, code := parseClusterRegisterFlags(args[1:], deps.Stderr)
+	if code != 0 {
+		return code
+	}
+	managedKubeconfig, err := kubeconfig.CopyManaged(id, flags["kubeconfig"])
+	if err != nil {
+		fmt.Fprintf(deps.Stderr, "could not persist kubeconfig: %v\n", err)
+		return 1
+	}
+	cluster := clusters.Cluster{
+		ID:         id,
+		Name:       valueOrDefault(flags["name"], id),
+		Type:       flags["type"],
+		Status:     valueOrDefault(flags["status"], "Unknown"),
+		APIServer:  flags["api-server"],
+		Kubeconfig: managedKubeconfig,
+		Context:    valueOrDefault(flags["context"], kubeconfig.ContextName(id)),
+		Profile:    flags["profile"],
+	}
+	if err := reg.Upsert(cluster); err != nil {
+		fmt.Fprintf(deps.Stderr, "could not persist cluster: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(deps.Stdout, "Registered cluster %s\nKubeconfig: %s\nContext: %s\n", cluster.ID, cluster.Kubeconfig, cluster.Context)
+	return 0
+}
+
+func parseClusterRegisterFlags(args []string, stderr io.Writer) (map[string]string, int) {
+	flags := map[string]string{}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--name", "--type", "--context", "--api-server", "--profile", "--status", "--kubeconfig":
+			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
+				fmt.Fprintf(stderr, "missing value for %s\n", args[i])
+				return nil, 2
+			}
+			flags[strings.TrimPrefix(args[i], "--")] = args[i+1]
+			i++
+		default:
+			fmt.Fprintf(stderr, "unsupported cluster register flag: %s\n", args[i])
+			return nil, 2
+		}
+	}
+	if strings.TrimSpace(flags["kubeconfig"]) == "" {
+		fmt.Fprintln(stderr, "cluster register requires --kubeconfig <file>")
+		return nil, 2
+	}
+	return flags, 0
+}
+
+func runClusterTools(deps Dependencies) int {
+	for _, status := range []tools.Status{tools.Detect("kubectl"), tools.Detect("k9s")} {
+		if status.Found {
+			fmt.Fprintf(deps.Stdout, "%s\tavailable\t%s\n", status.Name, status.Path)
+		} else {
+			fmt.Fprintf(deps.Stdout, "%s\tnot-found\n", status.Name)
+		}
+	}
+	return 0
+}
+
+func runClusterKubectl(ctx context.Context, reg clusters.Registry, id string, kubectlArgs []string, deps Dependencies) int {
+	cluster, err := reg.Get(id)
+	if err != nil {
+		fmt.Fprintln(deps.Stderr, err.Error())
+		return 2
+	}
+	if !statFile(cluster.Kubeconfig) {
+		fmt.Fprintf(deps.Stderr, "kubeconfig not found for cluster %s: %s\n", cluster.ID, cluster.Kubeconfig)
+		return 2
+	}
+	status := tools.Detect("kubectl")
+	if !status.Found {
+		fmt.Fprintln(deps.Stderr, "kubectl is not installed or not available on PATH")
+		return 2
+	}
+	out, err := deps.RunOutput(ctx, Invocation{
+		Path: status.Path,
+		Args: kubectlArgs,
+		Env:  tools.CurrentEnvWithKubeconfig(cluster.Kubeconfig),
+	})
+	if err != nil {
+		fmt.Fprintf(deps.Stderr, "kubectl failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprint(deps.Stdout, string(out))
+	return 0
+}
+
+func runClusterK9s(ctx context.Context, reg clusters.Registry, id string, deps Dependencies) int {
+	invocation, err := clusterK9sInvocation(reg, id)
+	if err != nil {
+		fmt.Fprintln(deps.Stderr, err.Error())
+		return 2
+	}
+	if err := deps.Exec(ctx, invocation); err != nil {
+		fmt.Fprintf(deps.Stderr, "k9s failed: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func clusterK9sInvocation(reg clusters.Registry, id string) (Invocation, error) {
+	cluster, err := reg.Get(id)
+	if err != nil {
+		return Invocation{}, err
+	}
+	if !statFile(cluster.Kubeconfig) {
+		return Invocation{}, fmt.Errorf("kubeconfig not found for cluster %s: %s", cluster.ID, cluster.Kubeconfig)
+	}
+	status := tools.Detect("k9s")
+	if !status.Found {
+		return Invocation{}, fmt.Errorf("k9s is not installed or not available on PATH")
+	}
+	args := []string{}
+	if strings.TrimSpace(cluster.Context) != "" {
+		args = append(args, "--context", cluster.Context)
+	}
+	return Invocation{
+		Path: status.Path,
+		Args: args,
+		Env:  tools.CurrentEnvWithKubeconfig(cluster.Kubeconfig),
+	}, nil
+}
+
+func renderCluster(w io.Writer, cluster clusters.Cluster) {
+	fmt.Fprintf(w, "ID: %s\n", cluster.ID)
+	fmt.Fprintf(w, "Name: %s\n", cluster.Name)
+	if cluster.Type != "" {
+		fmt.Fprintf(w, "Type: %s\n", cluster.Type)
+	}
+	if cluster.Status != "" {
+		fmt.Fprintf(w, "Status: %s\n", cluster.Status)
+	}
+	if cluster.APIServer != "" {
+		fmt.Fprintf(w, "API server: %s\n", cluster.APIServer)
+	}
+	fmt.Fprintf(w, "Kubeconfig: %s\n", cluster.Kubeconfig)
+	fmt.Fprintf(w, "Context: %s\n", cluster.Context)
+	if cluster.Profile != "" {
+		fmt.Fprintf(w, "Profile: %s\n", cluster.Profile)
+	}
+	if len(cluster.Stacks) > 0 {
+		fmt.Fprintf(w, "Stacks: %s\n", strings.Join(cluster.Stacks, ", "))
+	}
+	if len(cluster.Addons) > 0 {
+		fmt.Fprintf(w, "Add-ons: %s\n", strings.Join(cluster.Addons, ", "))
+	}
+	if cluster.KubeVersion != "" {
+		fmt.Fprintf(w, "Kubernetes: %s\n", cluster.KubeVersion)
+	}
+	if cluster.NodeCount > 0 {
+		fmt.Fprintf(w, "Nodes: %d\n", cluster.NodeCount)
+	}
+	if cluster.LastCheckedAt != "" {
+		fmt.Fprintf(w, "Last checked: %s\n", cluster.LastCheckedAt)
+	}
+}
+
+func valueOrDefault(value string, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
 }
 
 func runBOM(ctx context.Context, args []string, deps Dependencies) int {
@@ -366,7 +760,8 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 				fmt.Fprintln(deps.Stderr, err.Error())
 				return 2
 			}
-			return delegate(ctx, deps, "infra", false, []string{"profile", "install", "--tgz", resolved}, env, maybeCLITelemetryContext("profile-install", "infra", false, deps, telemetryOverride))
+			code := delegate(ctx, deps, "infra", false, []string{"profile", "install", "--tgz", resolved}, env, maybeCLITelemetryContext("profile-install", "infra", false, deps, telemetryOverride))
+			return maybeAutoRegisterProfileCluster(ctx, deps, catalogEntryDisplayName(entry), "profile-install", code)
 		}
 		tgz, code, ok := resolveTGZArg(filteredArgs, deps)
 		if !ok {
@@ -442,7 +837,11 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 			if args[0] == "export" {
 				delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
 			}
-			return delegate(ctx, deps, "infra", false, delegatedArgs, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
+			code := delegate(ctx, deps, "infra", false, delegatedArgs, env, maybeCLITelemetryContext("infra-"+args[0], "infra", false, deps, telemetryOverride))
+			if args[0] == "install" || args[0] == "apply" {
+				return maybeAutoRegisterProfileCluster(ctx, deps, catalogEntryDisplayName(entry), "infra-"+args[0], code)
+			}
+			return code
 		}
 		tgz, code, ok := resolveTGZArg(filteredArgs, deps)
 		if !ok {
@@ -465,12 +864,24 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 
 func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
 	if len(args) == 0 {
-		fmt.Fprintln(deps.Stderr, "Usage: pk3s addon <list|install|validate|export> [flags]")
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s addon <list|show|install|validate|export> [flags]")
 		return 2
 	}
 	switch args[0] {
 	case "list":
 		return runAddonList(ctx, deps)
+	case "show":
+		if len(args) < 2 || strings.TrimSpace(args[1]) == "" {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s addon show <name>")
+			return 2
+		}
+		entry, err := findCatalogEntry(ctx, deps, "addon", args[1])
+		if err != nil {
+			fmt.Fprintln(deps.Stderr, err.Error())
+			return 2
+		}
+		renderAddonCatalogEntry(deps.Stdout, entry)
+		return 0
 	case "validate":
 		if resolved, handled, exitCode := maybeResolveCatalogName(ctx, deps, "addon", args[1:], "", 0, false); handled {
 			if exitCode != 0 {
@@ -488,11 +899,11 @@ func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOv
 		}
 		return delegate(ctx, deps, "core", true, []string{"addon", "validate", "--tgz", tgz}, nil, maybeCLITelemetryContext("addon-validate", "core", false, deps, telemetryOverride))
 	case "install":
-		target, code := parseAddonInstallTarget(args[1:], deps.Stderr)
+		target, code := parseInstallTarget(args[1:], deps.Stderr, true, "addon")
 		if code != 0 {
 			return code
 		}
-		env, cleanup, err := resolveAddonInstallEnv(ctx, deps, target)
+		env, cleanup, err := resolveInstallTargetEnv(ctx, deps, target)
 		if err != nil {
 			fmt.Fprintln(deps.Stderr, err.Error())
 			return 2
@@ -544,13 +955,58 @@ func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOv
 }
 
 func runStack(ctx context.Context, args []string, deps Dependencies, telemetryOverride *bool) int {
-	_ = telemetryOverride
 	if len(args) == 0 {
-		fmt.Fprintln(deps.Stderr, "Usage: pk3s stack export --tgz <file|url> --output <path>")
+		fmt.Fprintln(deps.Stderr, "Usage: pk3s stack <list|show|install|export> [flags]")
 		return 2
 	}
 	switch args[0] {
+	case "list":
+		return runCatalogKindList(ctx, deps, "stack", false)
+	case "show":
+		if len(args) < 2 || strings.TrimSpace(args[1]) == "" {
+			fmt.Fprintln(deps.Stderr, "Usage: pk3s stack show <name>")
+			return 2
+		}
+		entry, err := findCatalogEntry(ctx, deps, "stack", args[1])
+		if err != nil {
+			fmt.Fprintln(deps.Stderr, err.Error())
+			return 2
+		}
+		renderPackageCatalogEntry(deps.Stdout, entry)
+		return 0
+	case "install":
+		target, code := parseInstallTarget(args[1:], deps.Stderr, false, "stack")
+		if code != 0 {
+			return code
+		}
+		env, cleanup, err := resolveInstallTargetEnv(ctx, deps, target)
+		if err != nil {
+			fmt.Fprintln(deps.Stderr, err.Error())
+			return 2
+		}
+		defer cleanup()
+		if resolved, handled, exitCode := maybeResolveCatalogName(ctx, deps, "stack", target.filteredArgs, "", 0, false); handled {
+			if exitCode != 0 {
+				return exitCode
+			}
+			return delegate(ctx, deps, "core", true, append([]string{"stack", "install", "--tgz", resolved}, removeFirstNonFlagArg(target.filteredArgs)...), env, maybeCLITelemetryContext("stack-install", "core", false, deps, telemetryOverride))
+		}
+		tgz, code, ok := resolveTGZArg(target.filteredArgs, deps)
+		if !ok {
+			fmt.Fprintln(deps.Stderr, "missing stack; use <name> or --tgz <file|url>")
+			return 2
+		}
+		if code != 0 {
+			return code
+		}
+		return delegate(ctx, deps, "core", true, append([]string{"stack", "install", "--tgz", tgz}, removeTGZArg(target.filteredArgs)...), env, maybeCLITelemetryContext("stack-install", "core", false, deps, telemetryOverride))
 	case "export":
+		if resolved, handled, exitCode := maybeResolveCatalogName(ctx, deps, "stack", args[1:], "", 0, false); handled {
+			if exitCode != 0 {
+				return exitCode
+			}
+			return delegate(ctx, deps, "core", false, append([]string{"stack", "export", "--tgz", resolved}, removeFirstNonFlagArg(args[1:])...), nil, nil)
+		}
 		tgz, code, ok := resolveTGZArg(args[1:], deps)
 		if !ok {
 			fmt.Fprintln(deps.Stderr, "missing tgz; use --tgz <file|url>")
@@ -567,34 +1023,10 @@ func runStack(ctx context.Context, args []string, deps Dependencies, telemetryOv
 }
 
 func runAddonList(ctx context.Context, deps Dependencies) int {
-	entries, _, err := loadCatalogEntriesFromConfiguredSources(ctx, deps)
-	if err != nil {
-		fmt.Fprintf(deps.Stderr, "%v\n", err)
-		return 1
-	}
-	filtered := make([]catalogEntry, 0, len(entries))
-	for _, entry := range entries {
-		if entry.Kind == "addon" {
-			filtered = append(filtered, entry)
-		}
-	}
-	sort.Slice(filtered, func(i, j int) bool {
-		return filtered[i].Name < filtered[j].Name
-	})
-	for _, entry := range filtered {
-		line := entry.Name
-		if entry.Version != "" {
-			line += "\t" + entry.Version
-		}
-		if entry.Category != "" {
-			line += "\t" + entry.Category
-		}
-		fmt.Fprintln(deps.Stdout, line)
-	}
-	return 0
+	return runCatalogKindList(ctx, deps, "addon", false)
 }
 
-func runProfileList(ctx context.Context, deps Dependencies) int {
+func runCatalogKindList(ctx context.Context, deps Dependencies, kind string, markProfileEnv bool) int {
 	entries, _, err := loadCatalogEntriesFromConfiguredSources(ctx, deps)
 	if err != nil {
 		fmt.Fprintf(deps.Stderr, "%v\n", err)
@@ -602,7 +1034,7 @@ func runProfileList(ctx context.Context, deps Dependencies) int {
 	}
 	filtered := make([]catalogEntry, 0, len(entries))
 	for _, entry := range entries {
-		if entry.Kind == "profile" {
+		if entry.Kind == kind {
 			filtered = append(filtered, entry)
 		}
 	}
@@ -617,7 +1049,7 @@ func runProfileList(ctx context.Context, deps Dependencies) int {
 		if entry.Category != "" {
 			line += "\t" + entry.Category
 		}
-		if entry.Install.RequiresLocalOverrides {
+		if markProfileEnv && entry.Install.RequiresLocalOverrides {
 			line += "\tneeds-env"
 		}
 		fmt.Fprintln(deps.Stdout, line)
@@ -625,45 +1057,61 @@ func runProfileList(ctx context.Context, deps Dependencies) int {
 	return 0
 }
 
-type addonInstallTarget struct {
+func runProfileList(ctx context.Context, deps Dependencies) int {
+	return runCatalogKindList(ctx, deps, "profile", true)
+}
+
+type installTarget struct {
 	filteredArgs   []string
 	kubeconfig     string
+	clusterID      string
 	clusterContext string
 	profileName    string
 	publicHost     string
 }
 
-func parseAddonInstallTarget(args []string, stderr io.Writer) (addonInstallTarget, int) {
+func parseInstallTarget(args []string, stderr io.Writer, requireExplicitTarget bool, subject string) (installTarget, int) {
 	filtered := make([]string, 0, len(args))
-	target := addonInstallTarget{}
+	target := installTarget{}
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--kubeconfig":
 			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
 				fmt.Fprintln(stderr, "missing kubeconfig path; use --kubeconfig <file>")
-				return addonInstallTarget{}, 2
+				return installTarget{}, 2
 			}
 			target.kubeconfig = args[i+1]
+			i++
+		case "--cluster":
+			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
+				fmt.Fprintln(stderr, "missing cluster id; use --cluster <id>")
+				return installTarget{}, 2
+			}
+			target.clusterID = args[i+1]
 			i++
 		case "--cluster-context":
 			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
 				fmt.Fprintln(stderr, "missing cluster context; use --cluster-context <name>")
-				return addonInstallTarget{}, 2
+				return installTarget{}, 2
 			}
 			target.clusterContext = args[i+1]
 			i++
 		case "--profile":
 			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
 				fmt.Fprintln(stderr, "missing profile name; use --profile <name>")
-				return addonInstallTarget{}, 2
+				return installTarget{}, 2
 			}
 			target.profileName = args[i+1]
 			i++
 		case "--public-host":
+			if subject != "addon" {
+				fmt.Fprintf(stderr, "unsupported %s install flag: --public-host\n", subject)
+				return installTarget{}, 2
+			}
 			if i+1 >= len(args) || strings.TrimSpace(args[i+1]) == "" {
 				fmt.Fprintln(stderr, "missing public host; use --public-host <fqdn>")
-				return addonInstallTarget{}, 2
+				return installTarget{}, 2
 			}
 			target.publicHost = args[i+1]
 			i++
@@ -672,9 +1120,9 @@ func parseAddonInstallTarget(args []string, stderr io.Writer) (addonInstallTarge
 		}
 	}
 
-	if strings.TrimSpace(target.kubeconfig) == "" && strings.TrimSpace(target.clusterContext) == "" && strings.TrimSpace(target.profileName) == "" {
-		fmt.Fprintln(stderr, "addon install requires an explicit target; use --profile <name>, --kubeconfig <file> or --cluster-context <name>")
-		return addonInstallTarget{}, 2
+	if requireExplicitTarget && strings.TrimSpace(target.kubeconfig) == "" && strings.TrimSpace(target.clusterID) == "" && strings.TrimSpace(target.clusterContext) == "" && strings.TrimSpace(target.profileName) == "" {
+		fmt.Fprintf(stderr, "%s install requires an explicit target; use --profile <name>, --cluster <id>, --kubeconfig <file> or --cluster-context <name>\n", subject)
+		return installTarget{}, 2
 	}
 	target.filteredArgs = filtered
 	return target, 0
@@ -761,7 +1209,7 @@ func maybeCLITelemetryContext(commandName, bundleKind string, legacyProfile bool
 
 func cliCommandEmitsTelemetry(commandName string) bool {
 	switch commandName {
-	case "install", "profile-install", "infra-install", "infra-apply", "infra-destroy", "apply", "destroy", "addon-install":
+	case "install", "profile-install", "infra-install", "infra-apply", "infra-destroy", "apply", "destroy", "addon-install", "stack-install":
 		return true
 	default:
 		return false
@@ -833,6 +1281,19 @@ func removeTGZArg(args []string) []string {
 		filtered = append(filtered, args[i])
 	}
 	return filtered
+}
+
+func removeFirstNonFlagArg(args []string) []string {
+	filtered := make([]string, 0, len(args))
+	removed := false
+	for _, arg := range args {
+		if !removed && !strings.HasPrefix(arg, "-") {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, arg)
+	}
+	return removeTGZArg(filtered)
 }
 
 func resolveTGZPath(value string, deps Dependencies) (string, int, bool) {
@@ -1108,6 +1569,137 @@ func osExec(ctx context.Context, invocation Invocation) error {
 	return cmd.Run()
 }
 
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+type streamWriter struct {
+	buffer io.Writer
+	sink   func(string)
+}
+
+func (w streamWriter) Write(p []byte) (int, error) {
+	if w.buffer != nil {
+		if _, err := w.buffer.Write(p); err != nil {
+			return 0, err
+		}
+	}
+	if w.sink != nil {
+		for _, line := range strings.Split(strings.TrimRight(string(p), "\n"), "\n") {
+			w.sink(line)
+		}
+	}
+	return len(p), nil
+}
+
+func commandSupportsOperationEvents(invocation Invocation) bool {
+	base := filepath.Base(invocation.Path)
+	return base == "productive-k3s-core.sh" || base == "productive-k3s-infra.sh"
+}
+
+func withOperationEvents(args []string) []string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--events" {
+			return append([]string(nil), args...)
+		}
+	}
+	out := make([]string, 0, len(args)+2)
+	out = append(out, "--events", "ndjson")
+	out = append(out, args...)
+	return out
+}
+
+func runEventedInvocation(ctx context.Context, invocation Invocation, eventSink func(tui.OperationEvent), logSink func(string), stdout io.Writer, stderr io.Writer) error {
+	cmd := exec.CommandContext(ctx, invocation.Path, withOperationEvents(invocation.Args)...)
+	cmd.Dir = invocation.Dir
+	cmd.Stdin = os.Stdin
+	cmd.Env = invocation.Env
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdoutPipe)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if event, ok := tui.ParseOperationEventLine(line); ok {
+				if eventSink != nil {
+					eventSink(event)
+				}
+				continue
+			}
+			if stdout != nil {
+				fmt.Fprintln(stdout, line)
+			}
+			if logSink != nil {
+				logSink(line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			line := fmt.Sprintf("warning: failed to read operation event stream: %v", err)
+			if stderr != nil {
+				fmt.Fprintln(stderr, line)
+			}
+			if logSink != nil {
+				logSink(line)
+			}
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderrPipe)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if stderr != nil {
+				fmt.Fprintln(stderr, line)
+			}
+			if logSink != nil {
+				logSink(line)
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			line := fmt.Sprintf("warning: failed to read operation logs: %v", err)
+			if stderr != nil {
+				fmt.Fprintln(stderr, line)
+			}
+			if logSink != nil {
+				logSink(line)
+			}
+		}
+	}()
+
+	waitErr := cmd.Wait()
+	wg.Wait()
+	return waitErr
+}
+
 func osExecOutput(ctx context.Context, invocation Invocation) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, invocation.Path, invocation.Args...)
 	cmd.Dir = invocation.Dir
@@ -1141,6 +1733,7 @@ Usage:
   Commands:
   help
   version
+  ui
   bom
   config
   doctor
@@ -1148,6 +1741,7 @@ Usage:
   validate
   backup
   bundle
+  cluster
   profile
   infra
   addon
@@ -1164,6 +1758,9 @@ Use:
   pk3s help stack
   pk3s help plan
   pk3s help bundle
+  pk3s help cluster
+
+Run pk3s ui to open the interactive terminal UI.
 `)
 }
 
@@ -1194,6 +1791,7 @@ Notes:
   The embedded profile.env inside the tgz is treated as base/defaults.
   Catalog-backed profiles may declare local-override inputs; pk3s will require --env-file before runtime for those entries.
   Use --env-file for installation-specific values, especially for cloud and on-prem profiles.
+  Catalog-backed installs automatically register the cluster when Infra writes a profile state file.
 `,
 		"infra": `Infra commands
 
@@ -1211,19 +1809,23 @@ Notes:
   The embedded profile.env inside the tgz is treated as base/defaults.
   Catalog-backed profiles may declare local-override inputs; pk3s will require --env-file before runtime for those entries.
   Use --env-file for installation-specific values, especially for cloud and on-prem profiles.
+  Catalog-backed install/apply operations automatically register the cluster when Infra writes a profile state file.
 `,
 		"addon": `Addon commands
 
 Usage:
   pk3s addon list
+  pk3s addon show <name>
   pk3s addon validate --tgz <file|url>
   pk3s addon export --tgz <file|url> --output <path>
-  pk3s addon install --tgz <file|url> [--public-host <fqdn>] (--kubeconfig <file> | --cluster-context <name>)
+  pk3s addon install --tgz <file|url> [--public-host <fqdn>] (--kubeconfig <file> | --cluster <id> | --cluster-context <name> | --profile <name>)
 
 Examples:
   pk3s addon list
+  pk3s addon show nginx
   pk3s addon validate --tgz ./longhorn-addon.tgz
   pk3s addon export --tgz ./longhorn-addon.tgz --output ./longhorn-installer
+  pk3s addon install --tgz ./longhorn-addon.tgz --cluster local-dev
   pk3s addon install --tgz ./longhorn-addon.tgz --cluster-context default
   pk3s addon install nginx --kubeconfig ~/.kube/config
   pk3s addon install nginx --profile multipass-1-server-2-agents --public-host nginx-01.k3s.lab.internal
@@ -1238,16 +1840,34 @@ Notes:
 		"stack": `Stack commands
 
 Usage:
+  pk3s stack list
+  pk3s stack show <name>
+  pk3s stack install <name> [--kubeconfig <file> | --cluster <id> | --cluster-context <name> | --profile <name>] [apply flags]
+  pk3s stack install --tgz <file|url> [--kubeconfig <file> | --cluster <id> | --cluster-context <name> | --profile <name>] [apply flags]
+  pk3s stack export <name> --output <path>
   pk3s stack export --tgz <file|url> --output <path>
 
 Subcommands:
-  export --tgz <file|url> --output <path>
+  list
+  show <name>
+  install <name|--tgz <file|url>>
+  export <name|--tgz <file|url>> --output <path>
 
 Examples:
+  pk3s stack list
+  pk3s stack show cluster-health
+  pk3s stack install cluster-health --dry-run
+  pk3s stack install cluster-health --kubeconfig ~/.kube/config
+  pk3s stack install cluster-health --cluster local-dev
+  pk3s stack install cluster-health --cluster-context default
+  pk3s stack install cluster-health --profile multipass-1-server-2-agents
+  pk3s stack export cluster-health --output ./cluster-health-installer
   pk3s stack export --tgz ./base-stack.tgz --output ./base-installer
 
 Notes:
-  Public stack export is package-oriented and delegates to Productive K3S Core.
+  Public stack install and export are package-oriented and delegate to Productive K3S Core.
+  Catalog-backed stack commands resolve the stack artifact in the CLI before delegating.
+  Stack installation targets are resolved in the CLI and passed to Core as process-scoped kubeconfig settings.
 `,
 		"plan": `Plan command
 
@@ -1309,6 +1929,30 @@ Examples:
 Notes:
   Bundle metadata comes from the resolved local or remote bundle.
 `,
+		"cluster": `Cluster commands
+
+Usage:
+  pk3s cluster list
+  pk3s cluster show <cluster-id>
+  pk3s cluster register <cluster-id> --kubeconfig <file> [flags]
+  pk3s cluster remove <cluster-id>
+  pk3s cluster test <cluster-id>
+  pk3s cluster kubectl <cluster-id> -- <kubectl-args>
+  pk3s cluster k9s <cluster-id>
+  pk3s cluster tools
+
+Examples:
+  pk3s cluster register local-dev --kubeconfig ./k3s.yaml --context pk3s-local-dev --profile development
+  pk3s cluster list
+  pk3s cluster test local-dev
+  pk3s cluster kubectl local-dev -- get pods -A
+  pk3s cluster k9s local-dev
+
+Notes:
+  Productive K3S stores managed kubeconfigs under the user config directory.
+  Catalog-backed profile and infra installs automatically register clusters when profile state is available.
+  kubectl and K9s are launched with process-scoped KUBECONFIG and do not modify ~/.kube/config.
+`,
 		"install": `Install command
 
 Usage:
@@ -1369,6 +2013,16 @@ Examples:
 
 Usage:
   pk3s version
+`,
+		"ui": `UI command
+
+Usage:
+  pk3s
+  pk3s ui
+
+Notes:
+  Opens the terminal UI for interactive Productive K3S operations.
+  Existing CLI commands remain the automation interface and do not start the TUI.
 `,
 		"bom": `BOM command
 
@@ -1577,7 +2231,7 @@ type profileState struct {
 	} `json:"server"`
 }
 
-func resolveAddonInstallEnv(ctx context.Context, deps Dependencies, target addonInstallTarget) (map[string]string, func(), error) {
+func resolveInstallTargetEnv(ctx context.Context, deps Dependencies, target installTarget) (map[string]string, func(), error) {
 	if target.profileName != "" {
 		kubeconfig, cleanup, err := kubeconfigForProfileState(ctx, deps, target.profileName)
 		if err != nil {
@@ -1590,10 +2244,36 @@ func resolveAddonInstallEnv(ctx context.Context, deps Dependencies, target addon
 	if target.kubeconfig != "" {
 		env["KUBECONFIG"] = target.kubeconfig
 	}
+	if target.clusterID != "" {
+		cluster, ok := lookupRegisteredCluster(target.clusterID)
+		if !ok {
+			return nil, func() {}, fmt.Errorf("cluster %q is not registered; run `pk3s cluster register %s --kubeconfig <file>` or use --kubeconfig <file>", target.clusterID, kubeconfig.SafeName(target.clusterID))
+		}
+		if !statFile(cluster.Kubeconfig) {
+			return nil, func() {}, fmt.Errorf("kubeconfig not found for cluster %s: %s", cluster.ID, cluster.Kubeconfig)
+		}
+		env["KUBECONFIG"] = cluster.Kubeconfig
+		if strings.TrimSpace(cluster.Context) != "" {
+			env["PK3S_KUBE_CONTEXT"] = cluster.Context
+		}
+		return env, func() {}, nil
+	}
 	if target.clusterContext != "" {
 		env["PK3S_KUBE_CONTEXT"] = target.clusterContext
 	}
 	return env, func() {}, nil
+}
+
+func lookupRegisteredCluster(id string) (clusters.Cluster, bool) {
+	reg, err := clusterRegistry()
+	if err != nil {
+		return clusters.Cluster{}, false
+	}
+	cluster, err := reg.Get(kubeconfig.SafeName(id))
+	if err != nil {
+		return clusters.Cluster{}, false
+	}
+	return cluster, true
 }
 
 func kubeconfigForProfileState(ctx context.Context, deps Dependencies, profileName string) (string, func(), error) {
@@ -1620,6 +2300,53 @@ func kubeconfigForProfileState(ctx context.Context, deps Dependencies, profileNa
 		return "", func() {}, err
 	}
 	return tmpFile.Name(), func() { _ = os.Remove(tmpFile.Name()) }, nil
+}
+
+func maybeAutoRegisterProfileCluster(ctx context.Context, deps Dependencies, profileName string, operation string, code int) int {
+	if code != 0 {
+		return code
+	}
+	if strings.TrimSpace(profileName) == "" {
+		return code
+	}
+	if err := autoRegisterProfileCluster(ctx, deps, profileName); err != nil {
+		fmt.Fprintf(deps.Stderr, "warning: %s completed, but cluster registration failed: %v\n", operation, err)
+	}
+	return code
+}
+
+func autoRegisterProfileCluster(ctx context.Context, deps Dependencies, profileName string) error {
+	if !statFile(profileStatePath(profileName)) {
+		return nil
+	}
+	state, err := loadProfileState(profileName)
+	if err != nil {
+		return err
+	}
+	content, err := fetchRemoteKubeconfig(ctx, deps, state)
+	if err != nil {
+		return err
+	}
+	content = rewriteKubeconfigServer(content, state.ServerURL)
+	id := kubeconfig.SafeName(profileName)
+	managedPath, err := kubeconfig.WriteManaged(id, content)
+	if err != nil {
+		return err
+	}
+	reg, err := clusterRegistry()
+	if err != nil {
+		return err
+	}
+	return reg.Upsert(clusters.Cluster{
+		ID:         id,
+		Name:       profileName,
+		Type:       "profile",
+		Status:     "Ready",
+		APIServer:  state.ServerURL,
+		Kubeconfig: managedPath,
+		Context:    kubeconfig.ContextName(id),
+		Profile:    profileName,
+	})
 }
 
 func loadProfileState(profileName string) (profileState, error) {
@@ -1741,10 +2468,7 @@ func findCatalogEntry(ctx context.Context, deps Dependencies, kind string, name 
 }
 
 func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catalogEntry) (string, error) {
-	name := entry.Name
-	if name == "" {
-		name = entry.ID
-	}
+	name := catalogEntryDisplayName(entry)
 	if entry.ArtifactType != "tgz" {
 		return "", fmt.Errorf("catalog entry %q does not expose a tgz artifact", name)
 	}
@@ -1761,10 +2485,7 @@ func profileCatalogInstallPreflight(entry catalogEntry, env map[string]string, s
 	if strings.TrimSpace(env["PK3S_PROFILE_OVERRIDE_ENV_FILE"]) != "" {
 		return 0
 	}
-	name := entry.Name
-	if name == "" {
-		name = entry.ID
-	}
+	name := catalogEntryDisplayName(entry)
 	fmt.Fprintf(stderr, "profile %q requires installation-specific local overrides; use --env-file <file>\n", name)
 	localInputs := make([]string, 0, len(entry.Install.Inputs))
 	for _, input := range entry.Install.Inputs {
@@ -1778,18 +2499,17 @@ func profileCatalogInstallPreflight(entry catalogEntry, env map[string]string, s
 	return 2
 }
 
+func catalogEntryDisplayName(entry catalogEntry) string {
+	for _, value := range []string{entry.Name, entry.ID, entry.MetadataName} {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return "unknown"
+}
+
 func renderProfileCatalogEntry(w io.Writer, entry catalogEntry) {
-	fmt.Fprintf(w, "Name: %s\n", entry.Name)
-	fmt.Fprintf(w, "Kind: %s\n", entry.Kind)
-	if entry.Version != "" {
-		fmt.Fprintf(w, "Version: %s\n", entry.Version)
-	}
-	if entry.Category != "" {
-		fmt.Fprintf(w, "Category: %s\n", entry.Category)
-	}
-	if entry.Description != "" {
-		fmt.Fprintf(w, "Description: %s\n", entry.Description)
-	}
+	renderCatalogEntrySummary(w, entry)
 	fmt.Fprintf(w, "Requires local overrides: %t\n", entry.Install.RequiresLocalOverrides)
 	if len(entry.Install.Inputs) == 0 {
 		return
@@ -1810,6 +2530,34 @@ func renderProfileCatalogEntry(w io.Writer, entry catalogEntry) {
 			line += " - " + input.Description
 		}
 		fmt.Fprintln(w, line)
+	}
+}
+
+func renderAddonCatalogEntry(w io.Writer, entry catalogEntry) {
+	renderPackageCatalogEntry(w, entry)
+}
+
+func renderPackageCatalogEntry(w io.Writer, entry catalogEntry) {
+	renderCatalogEntrySummary(w, entry)
+	if entry.ArtifactType != "" {
+		fmt.Fprintf(w, "Artifact type: %s\n", entry.ArtifactType)
+	}
+	if entry.ArtifactURL != "" {
+		fmt.Fprintf(w, "Artifact URL: %s\n", entry.ArtifactURL)
+	}
+}
+
+func renderCatalogEntrySummary(w io.Writer, entry catalogEntry) {
+	fmt.Fprintf(w, "Name: %s\n", entry.Name)
+	fmt.Fprintf(w, "Kind: %s\n", entry.Kind)
+	if entry.Version != "" {
+		fmt.Fprintf(w, "Version: %s\n", entry.Version)
+	}
+	if entry.Category != "" {
+		fmt.Fprintf(w, "Category: %s\n", entry.Category)
+	}
+	if entry.Description != "" {
+		fmt.Fprintf(w, "Description: %s\n", entry.Description)
 	}
 }
 

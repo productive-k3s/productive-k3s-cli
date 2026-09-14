@@ -12,6 +12,58 @@ import (
 	"testing"
 )
 
+func TestRunNoArgsShowsHelp(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	code := Run(context.Background(), nil, Dependencies{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		GOOS:   "linux",
+		GOARCH: "amd64",
+		RunTUI: func(context.Context, Dependencies) int {
+			called = true
+			return 0
+		},
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if called {
+		t.Fatal("did not expect TUI runner to be called")
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("Usage:")) || !bytes.Contains(stdout.Bytes(), []byte("pk3s ui")) {
+		t.Fatalf("expected help output, got %q", stdout.String())
+	}
+	if bytes.Contains(stdout.Bytes(), []byte("Run pk3s or pk3s ui")) {
+		t.Fatalf("help should not advertise bare pk3s as TUI entrypoint: %q", stdout.String())
+	}
+}
+
+func TestRunUIStartsTUI(t *testing.T) {
+	called := false
+
+	code := Run(context.Background(), []string{"ui"}, Dependencies{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+		RunTUI: func(context.Context, Dependencies) int {
+			called = true
+			return 0
+		},
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !called {
+		t.Fatal("expected TUI runner to be called")
+	}
+}
+
 func TestRunVersion(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -188,7 +240,7 @@ func TestRunHelpListsCommands(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
 
-	for _, expected := range []string{"install", "doctor", "validate", "bundle", "profile", "infra", "addon", "stack", "version", "bom"} {
+	for _, expected := range []string{"install", "doctor", "validate", "bundle", "cluster", "profile", "infra", "addon", "stack", "version", "ui", "bom"} {
 		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
 			t.Fatalf("help output missing %q: %s", expected, stdout.String())
 		}
@@ -271,8 +323,10 @@ func TestRunHelpAddonShowsUsageAndExamples(t *testing.T) {
 	}
 	for _, expected := range []string{
 		"pk3s addon list",
+		"pk3s addon show nginx",
 		"pk3s addon validate --tgz ./longhorn-addon.tgz",
 		"pk3s addon export --tgz ./longhorn-addon.tgz --output ./longhorn-installer",
+		"pk3s addon install --tgz ./longhorn-addon.tgz --cluster local-dev",
 		"pk3s addon install --tgz ./longhorn-addon.tgz --cluster-context default",
 	} {
 		if !bytes.Contains(stdout.Bytes(), []byte(expected)) {
@@ -299,6 +353,10 @@ func TestRunHelpStackShowsUsageAndExamples(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
 	for _, expected := range []string{
+		"pk3s stack list",
+		"pk3s stack show cluster-health",
+		"pk3s stack install cluster-health --dry-run",
+		"pk3s stack export cluster-health --output ./cluster-health-installer",
 		"pk3s stack export --tgz <file|url> --output <path>",
 		"pk3s stack export --tgz ./base-stack.tgz --output ./base-installer",
 	} {
