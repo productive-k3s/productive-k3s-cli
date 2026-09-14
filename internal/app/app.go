@@ -937,7 +937,7 @@ func runAddon(ctx context.Context, args []string, deps Dependencies, telemetryOv
 			if exitCode != 0 {
 				return exitCode
 			}
-			return delegate(ctx, deps, "core", false, append([]string{"addon", "export", "--tgz", resolved}, removeTGZArg(args[1:])...), nil, nil)
+			return delegate(ctx, deps, "core", false, append([]string{"addon", "export", "--tgz", resolved}, removeFirstNonFlagArg(args[1:])...), nil, nil)
 		}
 		tgz, code, ok := resolveTGZArg(args[1:], deps)
 		if !ok {
@@ -2017,7 +2017,6 @@ Usage:
 		"ui": `UI command
 
 Usage:
-  pk3s
   pk3s ui
 
 Notes:

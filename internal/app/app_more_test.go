@@ -2660,6 +2660,65 @@ entries:
 	}
 }
 
+func TestRunAddonExportResolvesNameFromCatalog(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - kind: addon
+    metadata:
+      name: cert-manager
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/cert-manager-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+		case "/addons/cert-manager-0.1.0.tgz":
+			_, _ = w.Write([]byte("tgz"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+	expectedTGZ := expectedDownloadedTGZPath(filepath.Join(workingDir, "cache"), server.URL+"/addons/cert-manager-0.1.0.tgz")
+
+	var got Invocation
+	code := Run(context.Background(), []string{"addon", "export", "cert-manager", "--output", "./bundle"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected addon export by catalog name to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "addon export --tgz "+expectedTGZ+" --output ./bundle" {
+		t.Fatalf("unexpected addon export args: %#v", got.Args)
+	}
+}
+
 func fakeExecutableDir(t *testing.T, name string) string {
 	t.Helper()
 	dir := t.TempDir()

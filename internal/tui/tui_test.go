@@ -90,6 +90,181 @@ func TestModelLoadsStacksAndShowsDetails(t *testing.T) {
 	}
 }
 
+func TestModelLoadsAddonsAndShowsDetails(t *testing.T) {
+	runner := func(_ context.Context, args []string) CommandResult {
+		joined := strings.Join(args, " ")
+		switch joined {
+		case "addon list":
+			return CommandResult{Args: args, Stdout: "nginx\t0.1.0\tingress\n"}
+		case "addon show nginx":
+			return CommandResult{Args: args, Stdout: "Name: nginx\nKind: addon\nArtifact URL: https://downloads.productive-k3s.io/addons/nginx-0.1.0.tgz\n"}
+		default:
+			t.Fatalf("unexpected command: %s", joined)
+			return CommandResult{Args: args, Code: 2}
+		}
+	}
+
+	model := NewModel(context.Background(), runner)
+	model.section = sectionAddons
+	msg := model.loadSection(sectionAddons)().(catalogLoadedMsg)
+	updated, _ := model.Update(msg)
+	model = updated.(Model)
+	if len(model.currentItems()) != 1 || model.currentItems()[0].Name != "nginx" {
+		t.Fatalf("expected one loaded add-on, got %#v", model.currentItems())
+	}
+	if !strings.Contains(model.detail, "Artifact URL: https://downloads.productive-k3s.io/addons/nginx-0.1.0.tgz") {
+		t.Fatalf("expected add-on details from CLI show, got %q", model.detail)
+	}
+}
+
+func TestModelSelectsClusterAndInstallsStack(t *testing.T) {
+	runner := func(_ context.Context, args []string) CommandResult {
+		joined := strings.Join(args, " ")
+		switch joined {
+		case "cluster list":
+			return CommandResult{Args: args, Stdout: "local-dev\tUnknown\tpk3s-local-dev\nother\tUnknown\tpk3s-other\n"}
+		case "cluster show local-dev":
+			return CommandResult{Args: args, Stdout: "ID: local-dev\nContext: pk3s-local-dev\n"}
+		case "cluster tools":
+			return CommandResult{Args: args, Stdout: "kubectl\tavailable\t/bin/kubectl\n"}
+		case "stack list":
+			return CommandResult{Args: args, Stdout: "cluster-health\t0.1.0\toperations\n"}
+		case "stack show cluster-health":
+			return CommandResult{Args: args, Stdout: "Name: cluster-health\nKind: stack\n"}
+		case "stack install cluster-health --cluster local-dev":
+			return CommandResult{Args: args, Stdout: "installed\n"}
+		default:
+			t.Fatalf("unexpected command: %s", joined)
+			return CommandResult{Args: args, Code: 2}
+		}
+	}
+
+	model := NewModel(context.Background(), runner)
+	model.section = sectionClusters
+	updated, _ := model.Update(model.loadSection(sectionClusters)().(catalogLoadedMsg))
+	model = updated.(Model)
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model = updated.(Model)
+	updated, _ = model.Update(cmd())
+	model = updated.(Model)
+	if model.activeCluster != "local-dev" {
+		t.Fatalf("expected active cluster local-dev, got %q", model.activeCluster)
+	}
+
+	model.section = sectionStacks
+	model.cursor = 0
+	updated, _ = model.Update(model.loadSection(sectionStacks)().(catalogLoadedMsg))
+	model = updated.(Model)
+	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	model = updated.(Model)
+	if model.mode != modeRunning {
+		t.Fatalf("expected running mode, got %#v", model.mode)
+	}
+	result := cmd().(commandResultMsg)
+	if strings.Join(result.Args, " ") != "stack install cluster-health --cluster local-dev" {
+		t.Fatalf("unexpected command args: %#v", result.Args)
+	}
+}
+
+func TestModelInstallsAddonUsingSingleLoadedCluster(t *testing.T) {
+	runner := func(_ context.Context, args []string) CommandResult {
+		joined := strings.Join(args, " ")
+		switch joined {
+		case "addon list":
+			return CommandResult{Args: args, Stdout: "nginx\t0.1.0\tingress\n"}
+		case "addon show nginx":
+			return CommandResult{Args: args, Stdout: "Name: nginx\nKind: addon\n"}
+		case "addon install nginx --cluster local-dev":
+			return CommandResult{Args: args, Stdout: "installed\n"}
+		default:
+			t.Fatalf("unexpected command: %s", joined)
+			return CommandResult{Args: args, Code: 2}
+		}
+	}
+
+	model := NewModel(context.Background(), runner)
+	model.items[sectionClusters] = []catalogItem{{Name: "local-dev"}}
+	model.section = sectionAddons
+	updated, _ := model.Update(model.loadSection(sectionAddons)().(catalogLoadedMsg))
+	model = updated.(Model)
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	model = updated.(Model)
+	if model.mode != modeRunning {
+		t.Fatalf("expected running mode, got %#v", model.mode)
+	}
+	result := cmd().(commandResultMsg)
+	if strings.Join(result.Args, " ") != "addon install nginx --cluster local-dev" {
+		t.Fatalf("unexpected command args: %#v", result.Args)
+	}
+}
+
+func TestModelRequiresClusterTargetForStackInstall(t *testing.T) {
+	model := NewModel(context.Background(), func(context.Context, []string) CommandResult {
+		return CommandResult{}
+	})
+	model.section = sectionStacks
+	model.items[sectionStacks] = []catalogItem{{Name: "cluster-health"}}
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	model = updated.(Model)
+	if cmd != nil {
+		t.Fatal("expected no command without cluster target")
+	}
+	if !strings.Contains(model.status, "Select a cluster target first") {
+		t.Fatalf("unexpected status: %q", model.status)
+	}
+}
+
+func TestModelExportsProfileAddonAndStack(t *testing.T) {
+	tests := []struct {
+		name     string
+		section  section
+		item     string
+		expected string
+	}{
+		{name: "profile", section: sectionProfiles, item: "aws-basic", expected: "profile export aws-basic --output ./pk3s-export-profile-aws-basic"},
+		{name: "addon", section: sectionAddons, item: "cert-manager", expected: "addon export cert-manager --output ./pk3s-export-addon-cert-manager"},
+		{name: "stack", section: sectionStacks, item: "cluster-health", expected: "stack export cluster-health --output ./pk3s-export-stack-cluster-health"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := func(_ context.Context, args []string) CommandResult {
+				if strings.Join(args, " ") != tt.expected {
+					t.Fatalf("unexpected command: %s", strings.Join(args, " "))
+				}
+				return CommandResult{Args: args, Stdout: "exported\n"}
+			}
+			model := NewModel(context.Background(), runner)
+			model.section = tt.section
+			model.items[tt.section] = []catalogItem{{Name: tt.item}}
+
+			updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+			model = updated.(Model)
+			if model.mode != modeRunning {
+				t.Fatalf("expected running mode, got %#v", model.mode)
+			}
+			result := cmd().(commandResultMsg)
+			if strings.Join(result.Args, " ") != tt.expected {
+				t.Fatalf("unexpected result args: %#v", result.Args)
+			}
+		})
+	}
+}
+
+func TestSafePathName(t *testing.T) {
+	tests := map[string]string{
+		"AWS Basic":       "aws-basic",
+		"../Stack Demo!!": "stack-demo",
+		"oci/arm64 basic": "oci-arm64-basic",
+		"   ":             "bundle",
+	}
+	for input, expected := range tests {
+		if got := safePathName(input); got != expected {
+			t.Fatalf("safePathName(%q) = %q, expected %q", input, got, expected)
+		}
+	}
+}
+
 func TestOperationProgressAndScrollableLogs(t *testing.T) {
 	runner := func(_ context.Context, args []string) CommandResult {
 		switch strings.Join(args, " ") {

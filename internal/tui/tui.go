@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -94,6 +95,7 @@ type Model struct {
 	items            map[section][]catalogItem
 	detail           string
 	status           string
+	activeCluster    string
 	logs             string
 	logViewport      viewport.Model
 	loaded           map[section]bool
@@ -281,6 +283,10 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.loadDetail()
 	case "i":
 		return m.startInstall()
+	case "e":
+		return m.startExport()
+	case "s":
+		return m.selectClusterTarget()
 	case "v":
 		return m.startValidate()
 	case "t":
@@ -332,6 +338,9 @@ func (m *Model) setLogs(content string) {
 func (m Model) catalogView() string {
 	left := m.sidebar()
 	right := m.detail
+	if m.activeCluster != "" && m.section != sectionClusters {
+		right = fmt.Sprintf("Active target cluster: %s\n\n%s", m.activeCluster, right)
+	}
 	if m.section == sectionClusters {
 		if strings.TrimSpace(right) == "" {
 			right = "No registered clusters.\n\nUse pk3s cluster register <id> --kubeconfig <file> to add one."
@@ -431,6 +440,9 @@ func (m Model) loadDetail() tea.Cmd {
 			}
 			tools := m.runner(m.ctx, []string{"cluster", "tools"})
 			detail := strings.TrimSpace(res.Stdout)
+			if m.activeCluster == item.Name {
+				detail = "Active target cluster: " + item.Name + "\n\n" + detail
+			}
 			if tools.Code == 0 && strings.TrimSpace(tools.Stdout) != "" {
 				detail += "\n\nDeveloper Tools\n" + strings.TrimSpace(tools.Stdout)
 			}
@@ -446,9 +458,14 @@ func (m Model) loadDetail() tea.Cmd {
 			return catalogLoadedMsg{section: m.section, items: m.currentItems(), detail: strings.TrimSpace(res.Stdout)}
 		}
 	}
-	if m.section != sectionProfiles {
-		detail := formatItemDetail(m.section, item)
-		return func() tea.Msg { return catalogLoadedMsg{section: m.section, items: m.currentItems(), detail: detail} }
+	if m.section == sectionAddons {
+		return func() tea.Msg {
+			res := m.runner(m.ctx, []string{"addon", "show", item.Name})
+			if res.Code != 0 {
+				return catalogLoadedMsg{section: m.section, items: m.currentItems(), err: strings.TrimSpace(res.Stderr)}
+			}
+			return catalogLoadedMsg{section: m.section, items: m.currentItems(), detail: strings.TrimSpace(res.Stdout)}
+		}
 	}
 	return func() tea.Msg {
 		res := m.runner(m.ctx, []string{"profile", "show", item.Name})
@@ -474,12 +491,90 @@ func (m Model) startInstall() (tea.Model, tea.Cmd) {
 			"Complete",
 		})
 	case sectionAddons:
-		m.status = "Add-on install needs a target: use pk3s addon install " + item.Name + " --profile <name>"
-		return m, nil
+		cluster, ok := m.installTargetCluster()
+		if !ok {
+			m.status = "Select a cluster target first: open Clusters and press s"
+			return m, nil
+		}
+		return m.startCommandOperation("Installing add-on "+item.Name, []string{"addon", "install", item.Name, "--cluster", cluster}, []string{
+			"Resolve add-on",
+			"Resolve target cluster",
+			"Run add-on install",
+			"Complete",
+		})
+	case sectionStacks:
+		cluster, ok := m.installTargetCluster()
+		if !ok {
+			m.status = "Select a cluster target first: open Clusters and press s"
+			return m, nil
+		}
+		return m.startCommandOperation("Installing stack "+item.Name, []string{"stack", "install", item.Name, "--cluster", cluster}, []string{
+			"Resolve stack",
+			"Resolve target cluster",
+			"Run stack install",
+			"Complete",
+		})
 	default:
 		m.status = "Install is not supported for this section"
 		return m, nil
 	}
+}
+
+func (m Model) startExport() (tea.Model, tea.Cmd) {
+	item, ok := m.selectedItem()
+	if !ok {
+		m.status = "No item selected"
+		return m, nil
+	}
+	switch m.section {
+	case sectionProfiles:
+		return m.startCommandOperation("Exporting profile "+item.Name, []string{"profile", "export", item.Name, "--output", exportOutputPath("profile", item.Name)}, []string{
+			"Resolve profile",
+			"Create export artifact",
+			"Complete",
+		})
+	case sectionAddons:
+		return m.startCommandOperation("Exporting add-on "+item.Name, []string{"addon", "export", item.Name, "--output", exportOutputPath("addon", item.Name)}, []string{
+			"Resolve add-on",
+			"Create export artifact",
+			"Complete",
+		})
+	case sectionStacks:
+		return m.startCommandOperation("Exporting stack "+item.Name, []string{"stack", "export", item.Name, "--output", exportOutputPath("stack", item.Name)}, []string{
+			"Resolve stack",
+			"Create export artifact",
+			"Complete",
+		})
+	default:
+		m.status = "Export is not supported for this section"
+		return m, nil
+	}
+}
+
+func (m Model) selectClusterTarget() (tea.Model, tea.Cmd) {
+	if m.section != sectionClusters {
+		m.status = "Cluster target selection is only available in Clusters"
+		return m, nil
+	}
+	item, ok := m.selectedItem()
+	if !ok {
+		m.status = "No cluster selected"
+		return m, nil
+	}
+	m.activeCluster = item.Name
+	m.status = "Active target cluster: " + item.Name
+	return m, m.loadDetail()
+}
+
+func (m Model) installTargetCluster() (string, bool) {
+	if strings.TrimSpace(m.activeCluster) != "" {
+		return m.activeCluster, true
+	}
+	clusters := m.items[sectionClusters]
+	if len(clusters) == 1 {
+		return clusters[0].Name, true
+	}
+	return "", false
 }
 
 func (m Model) startValidate() (tea.Model, tea.Cmd) {
@@ -701,14 +796,27 @@ func loadCatalog(ctx context.Context, runner CommandRunner, sec section, args []
 	detail := "Select an item to view details."
 	if len(items) > 0 {
 		detail = formatItemDetail(sec, items[0])
-		if sec == sectionProfiles {
-			show := runner(ctx, []string{"profile", "show", items[0].Name})
+		if showCommand, ok := showCommandForSection(sec); ok {
+			show := runner(ctx, append(showCommand, items[0].Name))
 			if show.Code == 0 {
 				detail = strings.TrimSpace(show.Stdout)
 			}
 		}
 	}
 	return catalogLoadedMsg{section: sec, items: items, detail: detail}
+}
+
+func showCommandForSection(sec section) ([]string, bool) {
+	switch sec {
+	case sectionProfiles:
+		return []string{"profile", "show"}, true
+	case sectionAddons:
+		return []string{"addon", "show"}, true
+	case sectionStacks:
+		return []string{"stack", "show"}, true
+	default:
+		return nil, false
+	}
 }
 
 func loadClusters(ctx context.Context, runner CommandRunner) catalogLoadedMsg {
@@ -775,17 +883,33 @@ func formatItemDetail(sec section, item catalogItem) string {
 	b.WriteString("\nActions\n")
 	switch sec {
 	case sectionProfiles:
-		b.WriteString("  v Validate\n  i Install\n")
+		b.WriteString("  v Validate\n  i Install\n  e Export bootstrap artifact\n")
 	case sectionAddons:
-		b.WriteString("  v Validate\n  i Install requires --profile, --kubeconfig or --cluster-context in CLI\n")
+		b.WriteString("  v Validate\n  i Install into active cluster\n  e Export bootstrap artifact\n")
 	case sectionStacks:
-		b.WriteString("  Install and export from CLI with explicit flags\n")
+		b.WriteString("  i Install into active cluster\n  e Export bootstrap artifact\n")
 	case sectionClusters:
-		b.WriteString("  t Test kubectl access\n  K Open K9s\n")
+		b.WriteString("  s Set as active install target\n  t Test kubectl access\n  K Open K9s\n")
 	default:
 		b.WriteString("  No direct TUI action is currently exposed.\n")
 	}
 	return b.String()
+}
+
+func exportOutputPath(kind string, name string) string {
+	return "./pk3s-export-" + kind + "-" + safePathName(name)
+}
+
+var unsafePathRunes = regexp.MustCompile(`[^a-z0-9]+`)
+
+func safePathName(name string) string {
+	safe := strings.ToLower(strings.TrimSpace(name))
+	safe = unsafePathRunes.ReplaceAllString(safe, "-")
+	safe = strings.Trim(safe, "-")
+	if safe == "" {
+		return "bundle"
+	}
+	return safe
 }
 
 func renderCommandResult(res CommandResult) string {
@@ -870,7 +994,9 @@ func helpView() string {
   left/right/tab    change section
   enter or d        refresh details
   v                 validate selected item
-  i                 install selected profile
+  i                 install selected profile, add-on or stack
+  e                 export selected profile, add-on or stack
+  s                 set selected cluster as active install target
   t                 test selected cluster with kubectl
   K                 open K9s for selected cluster
   r                 refresh section
@@ -892,13 +1018,13 @@ func footerText(current mode, sec section) string {
 	}
 	switch sec {
 	case sectionProfiles:
-		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   ? Help   q Quit"
 	case sectionAddons:
-		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   ? Help   q Quit"
 	case sectionStacks:
-		return "↑↓ Navigate   ←→ Section   Enter Details   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   i Install   e Export   r Refresh   ? Help   q Quit"
 	case sectionClusters:
-		return "↑↓ Navigate   ←→ Section   Enter Details   t Test   K K9s   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   s Target   t Test   K K9s   r Refresh   ? Help   q Quit"
 	default:
 		return "↑↓ Navigate   ←→ Section   r Refresh   ? Help   q Quit"
 	}
