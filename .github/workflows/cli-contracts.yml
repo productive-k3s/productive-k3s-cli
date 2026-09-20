@@ -48,13 +48,16 @@ jobs:
           mkdir -p "$HOME/.local/bin"
 
           curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  shellcheck-v0.11.0.linux.x86_64.tar.xz" | sha256sum -c -
           tar -xJf shellcheck-v0.11.0.linux.x86_64.tar.xz
           install shellcheck-v0.11.0/shellcheck "$HOME/.local/bin/shellcheck"
 
-          curl -fsSLo "$HOME/.local/bin/shfmt" https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          curl -fsSLO https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          echo "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1  shfmt_v3.13.1_linux_amd64" | sha256sum -c -
+          install shfmt_v3.13.1_linux_amd64 "$HOME/.local/bin/shfmt"
           chmod +x "$HOME/.local/bin/shfmt"
 
-          python3 -m pip install --user codespell
+          python3 -m pip install --user codespell==2.4.3
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run quick checks
