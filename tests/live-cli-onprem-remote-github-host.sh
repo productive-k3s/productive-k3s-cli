@@ -227,7 +227,7 @@ ONPREM_RANCHER_HOST=rancher.k3s.lab.internal
 ONPREM_REGISTRY_HOST=registry.k3s.lab.internal
 ONPREM_REMOTE_DIR=/home/${CURRENT_USER}/pk3s-cli-gha-onprem-remote
 
-PRODUCTIVE_K3S_SOURCE=remote
+PRODUCTIVE_K3S_SOURCE=local
 TELEMETRY_ENABLED=false
 EOF
 }
