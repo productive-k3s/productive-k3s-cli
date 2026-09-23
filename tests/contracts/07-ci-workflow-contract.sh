@@ -13,7 +13,7 @@ printf '%s\n' "${make_recipe}" | grep -F 'bash ./tests/run-cli-contracts.sh' >/d
 workflow_file="${ROOT_DIR}/.github/workflows/cli-contracts.yml"
 grep -F 'name: Run Go tests' "${workflow_file}" >/dev/null
 grep -F 'name: Set up Go' "${workflow_file}" >/dev/null
-grep -F 'uses: actions/setup-go@v5' "${workflow_file}" >/dev/null
+grep -E 'uses:[[:space:]]+actions/setup-go@[0-9a-f]{40}[[:space:]]+# actions/setup-go@v5' "${workflow_file}" >/dev/null
 grep -F 'go-version-file: productive-k3s-cli/go.mod' "${workflow_file}" >/dev/null
 grep -F 'shell: bash' "${workflow_file}" >/dev/null
 grep -F 'run: make go-test' "${workflow_file}" >/dev/null

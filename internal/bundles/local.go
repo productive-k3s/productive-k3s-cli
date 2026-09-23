@@ -57,6 +57,9 @@ func resolveExplicitLocalBundle(kind string) (BundleRef, bool, error) {
 		return BundleRef{}, true, err
 	}
 	dir := strings.TrimSpace(os.Getenv(dirVar))
+	if dir == "" && kind == "core" {
+		dir = strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_REPO"))
+	}
 	if dir == "" {
 		return BundleRef{}, false, nil
 	}

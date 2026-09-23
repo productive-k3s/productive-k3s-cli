@@ -7,7 +7,7 @@ else
 GO_BIN ?= go
 endif
 
-.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-checkstatus test-clean test-clean-all
+.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-checkstatus test-logs-clean test-clean test-clean-all
 
 test-local-all:
 	GO_BIN="$(GO_BIN)" bash $(DEV_WRAPPER) test-local-all
@@ -64,6 +64,12 @@ test-live-gha-onprem-remote:
 
 test-checkstatus:
 	bash $(DEV_WRAPPER) test-checkstatus
+
+test-logs-clean:
+	rm -rf ../test-artifacts ../runs ../coverage ../htmlcov ../.pytest_cache ../.coverage coverage htmlcov .pytest_cache .coverage
+	rm -rf ../.nyc_output ../playwright-report ../test-results .nyc_output playwright-report test-results
+	rm -f ../coverage.out ../coverage.txt ../coverage.xml coverage.out coverage.txt coverage.xml
+	find .. -maxdepth 1 -mindepth 1 -type d \( -name '.live-cli-multipass.*' -o -name '.live-cli-onprem-remote.*' \) -exec rm -rf {} + 2>/dev/null || true
 
 test-clean:
 	bash $(DEV_WRAPPER) test-clean

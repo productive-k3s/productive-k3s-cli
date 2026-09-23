@@ -40,6 +40,14 @@ List published addons from the catalog:
 
 ```bash
 pk3s addon list
+pk3s addon show nginx
+```
+
+List published stacks from the catalog:
+
+```bash
+pk3s stack list
+pk3s stack show cluster-health
 ```
 
 ## Profiles and infrastructure
@@ -106,10 +114,34 @@ Install an addon against an explicit kubeconfig instead of a profile:
 pk3s addon install nginx --kubeconfig ~/.kube/config
 ```
 
-Install an addon against a specific kube context:
+Install an addon against a registered cluster or a specific kube context:
 
 ```bash
+pk3s addon install nginx --cluster local-dev
 pk3s addon install nginx --cluster-context default
+```
+
+## Stacks
+
+Install a published stack by catalog name:
+
+```bash
+pk3s stack install cluster-health --dry-run
+```
+
+Install a stack on an explicit target:
+
+```bash
+pk3s stack install cluster-health --cluster local-dev
+pk3s stack install cluster-health --kubeconfig ~/.kube/config
+pk3s stack install cluster-health --cluster-context default
+pk3s stack install cluster-health --profile multipass-1-server-2-agents
+```
+
+Export a published stack as a self-contained installer:
+
+```bash
+pk3s stack export cluster-health --output ./cluster-health-installer
 ```
 
 ## Telemetry
@@ -134,7 +166,7 @@ pk3s infra install multipass-1-server-2-agents --telemetry disable
 
 ## Short Notes
 
-- `profile list`, `profile show`, `addon list`, `bom --json`, and `version` are read-only commands.
-- `infra install`, `infra destroy`, and `addon install` are mutating commands.
+- `profile list`, `profile show`, `addon list`, `addon show`, `stack list`, `stack show`, `bom --json`, and `version` are read-only commands.
+- `infra install`, `infra destroy`, `addon install`, and `stack install` are mutating commands.
 - `addon install --profile <name>` requires profile state from a previous `infra install` or `infra status`.
 - `--public-host` only works when the addon package declares support for the basic Core-managed ingress contract.
