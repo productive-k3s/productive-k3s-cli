@@ -51,6 +51,10 @@ assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'profi
 assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'cp "${canonical_profile}" "${ENV_FILE}"'
 assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'PK3S_INFRA_PROFILE_NAME=pk3s-cli-gha-onprem-remote'
 assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'PK3S_INFRA_SCENARIO=on-prem'
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'profiles/edge/on-prem/basic.env'
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'cp "${canonical_profile}" "${ENV_FILE}"'
+assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'PK3S_INFRA_PROFILE_NAME=pk3s-cli-onprem-remote'
+assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'PK3S_INFRA_SCENARIO=on-prem'
 
 assert_executable "${ROOT_DIR}/tests/run-cli-live.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh"

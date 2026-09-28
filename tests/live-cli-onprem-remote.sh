@@ -20,6 +20,7 @@ SSH_PUBKEY=""
 MULTIPASS_LAUNCH_RETRIES="${MULTIPASS_LAUNCH_RETRIES:-3}"
 MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS="${MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS:-5}"
 PROFILE_NAME="${PK3S_CLI_ONPREM_PROFILE_NAME:-on-prem-basic}"
+CANONICAL_PROFILE_RELATIVE_PATH="profiles/edge/on-prem/basic.env"
 
 # This local live validator targets remote SSH hosts, but it intentionally
 # exercises the source/dev surface so the scenario can assemble the shared
@@ -142,6 +143,33 @@ users:
     lock_passwd: true
     ssh_authorized_keys:
       - ${SSH_PUBKEY}
+EOF
+}
+
+write_env_file() {
+  local canonical_profile=""
+
+  prepare_profiles_repo_dir
+  canonical_profile="${PROFILES_REPO_DIR}/${CANONICAL_PROFILE_RELATIVE_PATH}"
+  [[ -f "${canonical_profile}" ]] || fail "canonical on-prem profile not found: ${canonical_profile}"
+
+  cp "${canonical_profile}" "${ENV_FILE}"
+  cat >> "${ENV_FILE}" <<EOF
+
+# Local live runtime overrides. Profile contract fields stay owned by Profiles.
+ONPREM_SERVER_IP=${SERVER_IP}
+ONPREM_AGENT_IPS=${AGENT_IP}
+ONPREM_SSH_USER=ubuntu
+ONPREM_SSH_PORT=22
+ONPREM_SSH_KEY_PATH=${SSH_KEY_PATH}
+
+ONPREM_CLUSTER_NAME=pk3s-cli-onprem-${STAMP}
+ONPREM_BASE_DOMAIN=k3s.lab.internal
+ONPREM_RANCHER_HOST=rancher.k3s.lab.internal
+ONPREM_REGISTRY_HOST=registry.k3s.lab.internal
+
+PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS=true
+TELEMETRY_ENABLED=false
 EOF
 }
 
@@ -299,25 +327,7 @@ wait_for_cloud_init "${AGENT_NAME}"
 wait_for_ssh "${SERVER_IP}"
 wait_for_ssh "${AGENT_IP}"
 
-cat > "${ENV_FILE}" <<EOF
-PK3S_INFRA_PROFILE_NAME=pk3s-cli-onprem-remote
-PK3S_INFRA_SCENARIO=on-prem
-PK3S_INFRA_ENGINE=ansible
-
-ONPREM_SERVER_IP=${SERVER_IP}
-ONPREM_AGENT_IPS=${AGENT_IP}
-ONPREM_SSH_USER=ubuntu
-ONPREM_SSH_PORT=22
-ONPREM_SSH_KEY_PATH=${SSH_KEY_PATH}
-
-ONPREM_CLUSTER_NAME=pk3s-cli-onprem-${STAMP}
-ONPREM_BASE_DOMAIN=k3s.lab.internal
-ONPREM_RANCHER_HOST=rancher.k3s.lab.internal
-ONPREM_REGISTRY_HOST=registry.k3s.lab.internal
-
-PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS=true
-TELEMETRY_ENABLED=false
-EOF
+write_env_file
 
 step "profile-validate"
 run_pk3s profile validate --profile "${ENV_FILE}"
