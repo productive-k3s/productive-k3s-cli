@@ -15,14 +15,27 @@ assert_contains() {
   fi
 }
 
+assert_action_pinned() {
+  local path="$1"
+  local action="$2"
+  local source_tag="$3"
+  local pattern="^[[:space:]]*uses:[[:space:]]+${action}@[0-9a-f]{40}[[:space:]]+#[[:space:]]+${action}@${source_tag}[[:space:]]*$"
+
+  if ! grep -Eq "${pattern}" "${path}"; then
+    printf '[FAIL] expected %s to pin %s by commit SHA with source tag %s\n' \
+      "${path}" "${action}" "${source_tag}" >&2
+    exit 1
+  fi
+}
+
 [[ -f "${WORKFLOW_FILE}" ]] || {
   printf '[FAIL] missing docs workflow: %s\n' "${WORKFLOW_FILE}" >&2
   exit 1
 }
 
 assert_contains "${WORKFLOW_FILE}" 'name: Documentation'
-assert_contains "${WORKFLOW_FILE}" 'uses: actions/setup-python@v5'
-assert_contains "${WORKFLOW_FILE}" 'uses: peaceiris/actions-gh-pages@v4'
+assert_action_pinned "${WORKFLOW_FILE}" 'actions/setup-python' 'v5'
+assert_action_pinned "${WORKFLOW_FILE}" 'peaceiris/actions-gh-pages' 'v4'
 assert_contains "${WORKFLOW_FILE}" 'publish_dir: ./docs/site'
 assert_contains "${WORKFLOW_FILE}" 'publish_branch: gh-pages'
 assert_contains "${WORKFLOW_FILE}" 'cname: cli.productive-k3s.io'
