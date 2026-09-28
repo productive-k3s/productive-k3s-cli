@@ -26,18 +26,18 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout productive-k3s-cli
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           path: productive-k3s-cli
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # actions/setup-go@v5
         with:
           go-version-file: productive-k3s-cli/go.mod
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -48,13 +48,16 @@ jobs:
           mkdir -p "$HOME/.local/bin"
 
           curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  shellcheck-v0.11.0.linux.x86_64.tar.xz" | sha256sum -c -
           tar -xJf shellcheck-v0.11.0.linux.x86_64.tar.xz
           install shellcheck-v0.11.0/shellcheck "$HOME/.local/bin/shellcheck"
 
-          curl -fsSLo "$HOME/.local/bin/shfmt" https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          curl -fsSLO https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          echo "fb096c5d1ac6beabbdbaa2874d025badb03ee07929f0c9ff67563ce8c75398b1  shfmt_v3.13.1_linux_amd64" | sha256sum -c -
+          install shfmt_v3.13.1_linux_amd64 "$HOME/.local/bin/shfmt"
           chmod +x "$HOME/.local/bin/shfmt"
 
-          python3 -m pip install --user codespell
+          python3 -m pip install --user codespell==2.4.3
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run quick checks
@@ -74,13 +77,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout productive-k3s-cli
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           path: productive-k3s-cli
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # actions/setup-go@v5
         with:
           go-version-file: productive-k3s-cli/go.mod
 
@@ -95,7 +98,7 @@ jobs:
         run: make test-cli-contract
 
       - name: Upload CLI contract artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
         if: always()
         with:
           name: productive-k3s-cli-contract-artifacts
@@ -112,13 +115,13 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout productive-k3s-cli
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
         with:
           path: productive-k3s-cli
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # actions/setup-go@v5
         with:
           go-version-file: productive-k3s-cli/go.mod
 
@@ -131,7 +134,7 @@ jobs:
 
       - name: Upload live artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # actions/upload-artifact@v4
         with:
           name: productive-k3s-cli-live-onprem-remote-github-host-artifacts
           path: |

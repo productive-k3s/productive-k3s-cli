@@ -40,6 +40,14 @@ Listar los addons publicados en el catálogo:
 
 ```bash
 pk3s addon list
+pk3s addon show nginx
+```
+
+Listar los stacks publicados en el catálogo:
+
+```bash
+pk3s stack list
+pk3s stack show cluster-health
 ```
 
 ## Profiles e infraestructura
@@ -106,10 +114,34 @@ Instalar un addon contra un kubeconfig explícito en vez de un profile:
 pk3s addon install nginx --kubeconfig ~/.kube/config
 ```
 
-Instalar un addon contra un contexto específico:
+Instalar un addon contra un cluster registrado o un contexto específico:
 
 ```bash
+pk3s addon install nginx --cluster local-dev
 pk3s addon install nginx --cluster-context default
+```
+
+## Stacks
+
+Instalar un stack publicado por nombre de catálogo:
+
+```bash
+pk3s stack install cluster-health --dry-run
+```
+
+Instalar un stack en un target explícito:
+
+```bash
+pk3s stack install cluster-health --cluster local-dev
+pk3s stack install cluster-health --kubeconfig ~/.kube/config
+pk3s stack install cluster-health --cluster-context default
+pk3s stack install cluster-health --profile multipass-1-server-2-agents
+```
+
+Exportar un stack publicado como installer autocontenido:
+
+```bash
+pk3s stack export cluster-health --output ./cluster-health-installer
 ```
 
 ## Telemetría
@@ -134,7 +166,7 @@ pk3s infra install multipass-1-server-2-agents --telemetry disable
 
 ## Notas cortas
 
-- `profile list`, `profile show`, `addon list`, `bom --json` y `version` son comandos de solo lectura.
-- `infra install`, `infra destroy` y `addon install` son comandos mutantes.
+- `profile list`, `profile show`, `addon list`, `addon show`, `stack list`, `stack show`, `bom --json` y `version` son comandos de solo lectura.
+- `infra install`, `infra destroy`, `addon install` y `stack install` son comandos mutantes.
 - `addon install --profile <name>` requiere estado persistido del profile por una corrida previa de `infra install` o `infra status`.
 - `--public-host` solo funciona cuando el addon declara soporte para el contrato básico de ingress administrado por Core.

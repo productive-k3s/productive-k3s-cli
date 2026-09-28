@@ -759,6 +759,104 @@ entries:
 	}
 }
 
+func TestRunProfileInstallFromCatalogAutoRegistersClusterWhenProfileStateExists(t *testing.T) {
+	workingDir := t.TempDir()
+	stateDir := filepath.Join(workingDir, "state")
+	configDir := filepath.Join(workingDir, "config")
+	registryPath := filepath.Join(workingDir, "registry.json")
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	t.Setenv("PK3S_PROFILE_STATE_DIR", stateDir)
+	t.Setenv("PK3S_CLUSTER_CONFIG_DIR", configDir)
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", registryPath)
+	infraDir := filepath.Join(workingDir, "productive-k3s-infra")
+	if err := os.MkdirAll(infraDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(infraDir, "productive-k3s-infra.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - id: multipass-dev
+    name: multipass-dev
+    kind: profile
+    visibility: public
+    category: local
+    description: "Multipass development profile."
+    version: 0.1.0
+    artifact:
+      type: tgz
+      url: SERVER_URL/infra/multipass-dev-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+		case "/infra/multipass-dev-0.1.0.tgz":
+			_, _ = w.Write([]byte("fake tgz"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+
+	code := Run(context.Background(), []string{"profile", "install", "multipass-dev"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			if strings.Join(invocation.Args[:2], " ") != "profile install" {
+				t.Fatalf("unexpected delegated args: %#v", invocation.Args)
+			}
+			if err := os.MkdirAll(stateDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			state := `{"server_url":"https://10.0.0.10:6443","ssh":{"user":"ubuntu","port":22,"key_path":"/tmp/key"},"server":{"ipv4":"10.0.0.10","name":"multipass-dev-server"}}`
+			return os.WriteFile(filepath.Join(stateDir, "multipass-dev.json"), []byte(state), 0o600)
+		},
+		RunOutput: func(_ context.Context, invocation Invocation) ([]byte, error) {
+			if invocation.Path != "ssh" {
+				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
+			}
+			return []byte("apiVersion: v1\nclusters:\n- cluster:\n    server: https://127.0.0.1:6443\n"), nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected install to succeed, got %d", code)
+	}
+
+	var listOut bytes.Buffer
+	code = Run(context.Background(), []string{"cluster", "list"}, Dependencies{
+		Stdout: &listOut,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected cluster list to succeed, got %d", code)
+	}
+	if !strings.Contains(listOut.String(), "multipass-dev\tReady\tpk3s-multipass-dev\tmultipass-dev") {
+		t.Fatalf("unexpected cluster list: %q", listOut.String())
+	}
+	managedPath := filepath.Join(configDir, "multipass-dev", "kubeconfig.yaml")
+	body, err := os.ReadFile(managedPath)
+	if err != nil {
+		t.Fatalf("expected managed kubeconfig: %v", err)
+	}
+	if !strings.Contains(string(body), "server: https://10.0.0.10:6443") {
+		t.Fatalf("expected rewritten server URL, got %q", string(body))
+	}
+}
+
 func TestRunProfileInstallRequiresTGZ(t *testing.T) {
 	var stderr bytes.Buffer
 	code := Run(context.Background(), []string{"profile", "install"}, Dependencies{
@@ -1104,6 +1202,56 @@ entries:
 	}
 	if !slices.Contains(got.Env, "PK3S_KUBE_CONTEXT=default") {
 		t.Fatalf("expected cluster context to be propagated, env=%#v", got.Env)
+	}
+}
+
+func TestRunAddonInstallResolvesRegisteredCluster(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-addon.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	kubeconfigPath := filepath.Join(workingDir, "kubeconfig.yaml")
+	if err := os.WriteFile(kubeconfigPath, []byte("apiVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registryPath := filepath.Join(workingDir, "registry.json")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", registryPath)
+	registryBody := `{"clusters":[{"id":"local-dev","name":"Local Dev","kubeconfig":"` + kubeconfigPath + `","context":"pk3s-local-dev","status":"Ready"}]}`
+	if err := os.WriteFile(registryPath, []byte(registryBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var got Invocation
+	code := Run(context.Background(), []string{"addon", "install", "--tgz", tgzPath, "--cluster", "local-dev"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected addon install with registered cluster to succeed, got %d", code)
+	}
+	if !slices.Contains(got.Env, "KUBECONFIG="+kubeconfigPath) {
+		t.Fatalf("expected registered kubeconfig to be propagated, env=%#v", got.Env)
+	}
+	if !slices.Contains(got.Env, "PK3S_KUBE_CONTEXT=pk3s-local-dev") {
+		t.Fatalf("expected registered context to be propagated, env=%#v", got.Env)
 	}
 }
 
@@ -1681,6 +1829,73 @@ entries:
 	}
 }
 
+func TestRunAddonShowReadsCatalogMetadataWithoutDelegating(t *testing.T) {
+	workingDir := t.TempDir()
+	var stdout bytes.Buffer
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - id: nginx
+    name: nginx
+    kind: addon
+    visibility: public
+    category: ingress
+    description: "Nginx ingress add-on."
+    version: 0.1.0
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/nginx-0.1.0.tgz
+  - kind: profile
+    name: multipass-1-server-2-agents
+    category: local
+    version: 0.1.0
+`, "SERVER_URL", server.URL)))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+
+	code := Run(context.Background(), []string{"addon", "show", "nginx"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			t.Fatalf("addon show should not delegate to a bundle: %#v", invocation)
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected addon show to succeed, got %d", code)
+	}
+	got := stdout.String()
+	for _, expected := range []string{
+		"Name: nginx",
+		"Kind: addon",
+		"Version: 0.1.0",
+		"Category: ingress",
+		"Description: Nginx ingress add-on.",
+		"Artifact type: tgz",
+		"Artifact URL: " + server.URL + "/addons/nginx-0.1.0.tgz",
+	} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("addon show missing %q: %q", expected, got)
+		}
+	}
+}
+
 func TestRunAddonInstallRequiresExplicitTarget(t *testing.T) {
 	var stderr bytes.Buffer
 	code := Run(context.Background(), []string{"addon", "install", "nginx"}, noTelemetryDeps(t, Dependencies{
@@ -1833,4 +2048,687 @@ func TestDelegateReportsExecAndBundleResolutionErrors(t *testing.T) {
 	if !bytes.Contains(stderr.Bytes(), []byte("bundle resolution failed")) {
 		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
+}
+
+func TestRunClusterRegisterListShowAndKubectl(t *testing.T) {
+	workingDir := t.TempDir()
+	registryPath := filepath.Join(workingDir, "registry.json")
+	configDir := filepath.Join(workingDir, "config")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", registryPath)
+	t.Setenv("PK3S_CLUSTER_CONFIG_DIR", configDir)
+	t.Setenv("PATH", fakeExecutableDir(t, "kubectl"))
+	t.Setenv("KUBECONFIG", "parent")
+
+	sourceKubeconfig := filepath.Join(workingDir, "k3s.yaml")
+	if err := os.WriteFile(sourceKubeconfig, []byte("apiVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var registerOut bytes.Buffer
+	code := Run(context.Background(), []string{
+		"cluster", "register", "Local Dev",
+		"--kubeconfig", sourceKubeconfig,
+		"--context", "pk3s-local-dev",
+		"--profile", "development",
+		"--api-server", "https://127.0.0.1:6443",
+	}, Dependencies{
+		Stdout: &registerOut,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected register to succeed, got %d", code)
+	}
+	if !strings.Contains(registerOut.String(), "Registered cluster local-dev") {
+		t.Fatalf("unexpected register output: %q", registerOut.String())
+	}
+	managedPath := filepath.Join(configDir, "local-dev", "kubeconfig.yaml")
+	if _, err := os.Stat(managedPath); err != nil {
+		t.Fatalf("expected managed kubeconfig: %v", err)
+	}
+
+	var listOut bytes.Buffer
+	code = Run(context.Background(), []string{"cluster", "list"}, Dependencies{
+		Stdout: &listOut,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected list to succeed, got %d", code)
+	}
+	if !strings.Contains(listOut.String(), "local-dev\tUnknown\tpk3s-local-dev\tdevelopment") {
+		t.Fatalf("unexpected list output: %q", listOut.String())
+	}
+
+	var showOut bytes.Buffer
+	code = Run(context.Background(), []string{"cluster", "show", "local-dev"}, Dependencies{
+		Stdout: &showOut,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected show to succeed, got %d", code)
+	}
+	if !strings.Contains(showOut.String(), "Kubeconfig: "+managedPath) {
+		t.Fatalf("unexpected show output: %q", showOut.String())
+	}
+
+	var seen Invocation
+	var kubectlOut bytes.Buffer
+	code = Run(context.Background(), []string{"cluster", "kubectl", "local-dev", "--", "get", "nodes"}, Dependencies{
+		Stdout: &kubectlOut,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+		RunOutput: func(_ context.Context, invocation Invocation) ([]byte, error) {
+			seen = invocation
+			return []byte("node-1 Ready\n"), nil
+		},
+	})
+	if code != 0 {
+		t.Fatalf("expected kubectl to succeed, got %d", code)
+	}
+	if strings.Join(seen.Args, " ") != "get nodes" {
+		t.Fatalf("unexpected kubectl args: %#v", seen.Args)
+	}
+	if !envContains(seen.Env, "KUBECONFIG="+managedPath) {
+		t.Fatalf("expected managed KUBECONFIG in child env: %#v", seen.Env)
+	}
+	if os.Getenv("KUBECONFIG") != "parent" {
+		t.Fatalf("parent KUBECONFIG was modified")
+	}
+	if kubectlOut.String() != "node-1 Ready\n" {
+		t.Fatalf("unexpected kubectl output: %q", kubectlOut.String())
+	}
+}
+
+func TestRunClusterK9sUsesManagedKubeconfigAndContext(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", filepath.Join(workingDir, "registry.json"))
+	t.Setenv("PK3S_CLUSTER_CONFIG_DIR", filepath.Join(workingDir, "config"))
+	t.Setenv("PATH", fakeExecutableDir(t, "k9s"))
+
+	sourceKubeconfig := filepath.Join(workingDir, "k3s.yaml")
+	if err := os.WriteFile(sourceKubeconfig, []byte("apiVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code := Run(context.Background(), []string{"cluster", "register", "local-dev", "--kubeconfig", sourceKubeconfig, "--context", "pk3s-local-dev"}, Dependencies{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected register to succeed, got %d", code)
+	}
+
+	var seen Invocation
+	code = Run(context.Background(), []string{"cluster", "k9s", "local-dev"}, Dependencies{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+		Exec: func(_ context.Context, invocation Invocation) error {
+			seen = invocation
+			return nil
+		},
+	})
+	if code != 0 {
+		t.Fatalf("expected k9s to succeed, got %d", code)
+	}
+	if strings.Join(seen.Args, " ") != "--context pk3s-local-dev" {
+		t.Fatalf("unexpected k9s args: %#v", seen.Args)
+	}
+	if !envContains(seen.Env, "KUBECONFIG="+filepath.Join(workingDir, "config", "local-dev", "kubeconfig.yaml")) {
+		t.Fatalf("expected managed KUBECONFIG in child env: %#v", seen.Env)
+	}
+}
+
+func TestRunStackListReadsCatalogMetadata(t *testing.T) {
+	workingDir := t.TempDir()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/index.yaml" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - id: cluster-health
+    name: cluster-health
+    kind: stack
+    visibility: public
+    category: operations
+    description: "Cluster health stack."
+    version: 0.1.0
+    artifact:
+      type: tgz
+      url: https://downloads.productive-k3s.io/addons/cluster-health-0.1.0.tgz
+`))
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+
+	var stdout bytes.Buffer
+	code := Run(context.Background(), []string{"stack", "list"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack list to succeed, got %d", code)
+	}
+	if got := stdout.String(); !strings.Contains(got, "cluster-health\t0.1.0\toperations") {
+		t.Fatalf("unexpected stack list output: %q", got)
+	}
+}
+
+func TestRunStackShowReadsCatalogMetadataWithoutDelegating(t *testing.T) {
+	workingDir := t.TempDir()
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/index.yaml" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - id: cluster-health
+    name: cluster-health
+    kind: stack
+    visibility: public
+    category: operations
+    description: "Cluster health stack."
+    version: 0.1.0
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/cluster-health-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+
+	var stdout bytes.Buffer
+	code := Run(context.Background(), []string{"stack", "show", "cluster-health"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &stdout,
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			t.Fatalf("stack show should not delegate to a bundle: %#v", invocation)
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack show to succeed, got %d", code)
+	}
+	got := stdout.String()
+	for _, expected := range []string{
+		"Name: cluster-health",
+		"Kind: stack",
+		"Version: 0.1.0",
+		"Category: operations",
+		"Description: Cluster health stack.",
+		"Artifact type: tgz",
+		"Artifact URL: " + server.URL + "/addons/cluster-health-0.1.0.tgz",
+	} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("stack show missing %q: %q", expected, got)
+		}
+	}
+}
+
+func TestRunStackInstallResolvesNameFromCatalog(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - kind: stack
+    metadata:
+      name: cluster-health
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/cluster-health-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+		case "/addons/cluster-health-0.1.0.tgz":
+			_, _ = w.Write([]byte("tgz"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+	expectedTGZ := expectedDownloadedTGZPath(filepath.Join(workingDir, "cache"), server.URL+"/addons/cluster-health-0.1.0.tgz")
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "install", "cluster-health", "--dry-run"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack install by catalog name to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "stack install --tgz "+expectedTGZ+" --dry-run" {
+		t.Fatalf("unexpected stack install args: %#v", got.Args)
+	}
+}
+
+func TestRunStackInstallForwardsKubeconfigTarget(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-stack.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	kubeconfigPath := filepath.Join(workingDir, "kubeconfig.yaml")
+	if err := os.WriteFile(kubeconfigPath, []byte("apiVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "install", "--tgz", tgzPath, "--kubeconfig", kubeconfigPath, "--dry-run"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack install with kubeconfig to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "stack install --tgz "+tgzPath+" --dry-run" {
+		t.Fatalf("unexpected stack install args: %#v", got.Args)
+	}
+	if !slices.Contains(got.Env, "KUBECONFIG="+kubeconfigPath) {
+		t.Fatalf("expected KUBECONFIG to be propagated, env=%#v", got.Env)
+	}
+}
+
+func TestRunStackInstallResolvesRegisteredCluster(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-stack.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	kubeconfigPath := filepath.Join(workingDir, "kubeconfig.yaml")
+	if err := os.WriteFile(kubeconfigPath, []byte("apiVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	registryPath := filepath.Join(workingDir, "registry.json")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", registryPath)
+	registryBody := `{"clusters":[{"id":"local-dev","name":"Local Dev","kubeconfig":"` + kubeconfigPath + `","context":"pk3s-local-dev","status":"Ready"}]}`
+	if err := os.WriteFile(registryPath, []byte(registryBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "install", "--tgz", tgzPath, "--cluster", "local-dev"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack install with registered cluster to succeed, got %d", code)
+	}
+	if !slices.Contains(got.Env, "KUBECONFIG="+kubeconfigPath) {
+		t.Fatalf("expected registered kubeconfig to be propagated, env=%#v", got.Env)
+	}
+	if !slices.Contains(got.Env, "PK3S_KUBE_CONTEXT=pk3s-local-dev") {
+		t.Fatalf("expected registered context to be propagated, env=%#v", got.Env)
+	}
+}
+
+func TestRunStackInstallForwardsDirectClusterContext(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", filepath.Join(workingDir, "registry.json"))
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-stack.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "install", "--tgz", tgzPath, "--cluster-context", "local-dev"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack install with direct cluster context to succeed, got %d", code)
+	}
+	if !slices.Contains(got.Env, "PK3S_KUBE_CONTEXT=local-dev") {
+		t.Fatalf("expected direct cluster context to be propagated, env=%#v", got.Env)
+	}
+}
+
+func TestRunStackInstallRejectsUnregisteredCluster(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", filepath.Join(workingDir, "registry.json"))
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-stack.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stderr bytes.Buffer
+	code := Run(context.Background(), []string{"stack", "install", "--tgz", tgzPath, "--cluster", "local-dev"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &stderr,
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			t.Fatalf("stack install should not delegate with unregistered cluster: %#v", invocation)
+			return nil
+		},
+	}))
+	if code != 2 {
+		t.Fatalf("expected usage error for unregistered cluster, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "cluster \"local-dev\" is not registered") {
+		t.Fatalf("unexpected stderr: %q", stderr.String())
+	}
+}
+
+func TestRunStackInstallResolvesProfileStateToKubeconfig(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	stateDir := filepath.Join(workingDir, "state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PK3S_PROFILE_STATE_DIR", stateDir)
+	stateBody := `{
+  "server_url": "https://10.0.0.10:6443",
+  "ssh": {
+    "user": "ubuntu",
+    "port": 22,
+    "key_path": "/tmp/test-key"
+  },
+  "server": {
+    "ipv4": "10.0.0.10"
+  }
+}`
+	if err := os.WriteFile(filepath.Join(stateDir, "multipass-1-server-2-agents.json"), []byte(stateBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tgzPath := filepath.Join(workingDir, "demo-stack.tgz")
+	if err := os.WriteFile(tgzPath, []byte("tgz"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "install", "--tgz", tgzPath, "--profile", "multipass-1-server-2-agents"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		RunOutput: func(_ context.Context, invocation Invocation) ([]byte, error) {
+			if invocation.Path != "ssh" {
+				t.Fatalf("unexpected command: %s %#v", invocation.Path, invocation.Args)
+			}
+			return []byte("apiVersion: v1\nclusters:\n- cluster:\n    server: https://127.0.0.1:6443\n"), nil
+		},
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			kubeconfig := ""
+			for _, kv := range invocation.Env {
+				if strings.HasPrefix(kv, "KUBECONFIG=") {
+					kubeconfig = strings.TrimPrefix(kv, "KUBECONFIG=")
+				}
+			}
+			if kubeconfig == "" {
+				t.Fatalf("expected KUBECONFIG env, got %#v", invocation.Env)
+			}
+			body, err := os.ReadFile(kubeconfig)
+			if err != nil {
+				t.Fatalf("expected kubeconfig file to exist: %v", err)
+			}
+			if !strings.Contains(string(body), "server: https://10.0.0.10:6443") {
+				t.Fatalf("expected rewritten kubeconfig server, got %q", string(body))
+			}
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack install by profile to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "stack install --tgz "+tgzPath {
+		t.Fatalf("unexpected stack profile args: %#v", got.Args)
+	}
+}
+
+func TestRunStackExportResolvesNameFromCatalog(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - kind: stack
+    metadata:
+      name: cluster-health
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/cluster-health-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+		case "/addons/cluster-health-0.1.0.tgz":
+			_, _ = w.Write([]byte("tgz"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+	expectedTGZ := expectedDownloadedTGZPath(filepath.Join(workingDir, "cache"), server.URL+"/addons/cluster-health-0.1.0.tgz")
+
+	var got Invocation
+	code := Run(context.Background(), []string{"stack", "export", "cluster-health", "--output", "./bundle"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected stack export by catalog name to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "stack export --tgz "+expectedTGZ+" --output ./bundle" {
+		t.Fatalf("unexpected stack export args: %#v", got.Args)
+	}
+}
+
+func TestRunAddonExportResolvesNameFromCatalog(t *testing.T) {
+	workingDir := t.TempDir()
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	coreDir := filepath.Join(workingDir, "productive-k3s-core")
+	if err := os.MkdirAll(coreDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(coreDir, "productive-k3s-core.sh"), []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = w.Write([]byte(strings.ReplaceAll(`apiVersion: catalogs.productive-k3s.io/v1alpha1
+kind: ProductiveK3SCatalog
+metadata:
+  name: productive-k3s-catalog
+entries:
+  - kind: addon
+    metadata:
+      name: cert-manager
+    artifact:
+      type: tgz
+      url: SERVER_URL/addons/cert-manager-0.1.0.tgz
+`, "SERVER_URL", server.URL)))
+		case "/addons/cert-manager-0.1.0.tgz":
+			_, _ = w.Write([]byte("tgz"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
+	expectedTGZ := expectedDownloadedTGZPath(filepath.Join(workingDir, "cache"), server.URL+"/addons/cert-manager-0.1.0.tgz")
+
+	var got Invocation
+	code := Run(context.Background(), []string{"addon", "export", "cert-manager", "--output", "./bundle"}, noTelemetryDeps(t, Dependencies{
+		Stdout:     &bytes.Buffer{},
+		Stderr:     &bytes.Buffer{},
+		GOOS:       "linux",
+		GOARCH:     "amd64",
+		WorkingDir: workingDir,
+		CacheDir:   filepath.Join(workingDir, "cache"),
+		HTTPClient: server.Client(),
+		Exec: func(_ context.Context, invocation Invocation) error {
+			got = invocation
+			return nil
+		},
+	}))
+	if code != 0 {
+		t.Fatalf("expected addon export by catalog name to succeed, got %d", code)
+	}
+	if strings.Join(got.Args, " ") != "addon export --tgz "+expectedTGZ+" --output ./bundle" {
+		t.Fatalf("unexpected addon export args: %#v", got.Args)
+	}
+}
+
+func fakeExecutableDir(t *testing.T, name string) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func envContains(env []string, expected string) bool {
+	return slices.Contains(env, expected)
 }

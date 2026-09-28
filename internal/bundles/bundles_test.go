@@ -182,11 +182,11 @@ func TestResolveRemoteInfraBundleRejectsIncompleteRelease(t *testing.T) {
 func TestResolveRemoteInfraBundleAcceptsCompleteRelease(t *testing.T) {
 	archiveName := "productive-k3s-infra-0.9.64-0.9.5.tar.gz"
 	archiveBytes := buildTarGzFiles(t, map[string]string{
-		"productive-k3s-infra-0.9.64-0.9.5/productive-k3s-infra.sh":             "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.64-0.9.5/scripts/productive-k3s-infra.sh":     "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.64-0.9.5/scripts/release.env":                 "PK3S_INFRA_RELEASE_TAG=0.9.64-0.9.5\nPK3S_INFRA_RUNTIME_SURFACE=package-only\n",
-		"productive-k3s-infra-0.9.64-0.9.5/scripts/release-config.sh":           "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.64-0.9.5/scripts/send-telemetry-event.sh":     "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.64-0.9.5/productive-k3s-infra.sh":         "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.64-0.9.5/scripts/productive-k3s-infra.sh": "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.64-0.9.5/scripts/release.env":             "PK3S_INFRA_RELEASE_TAG=0.9.64-0.9.5\nPK3S_INFRA_RUNTIME_SURFACE=package-only\n",
+		"productive-k3s-infra-0.9.64-0.9.5/scripts/release-config.sh":       "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.64-0.9.5/scripts/send-telemetry-event.sh": "#!/usr/bin/env bash\n",
 	})
 	sum := sha256.Sum256(archiveBytes)
 	checksum := hex.EncodeToString(sum[:])
