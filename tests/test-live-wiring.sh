@@ -12,6 +12,15 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local path="$1"
+  local needle="$2"
+  if grep -Fq "${needle}" "${path}"; then
+    printf '[FAIL] expected %s not to contain: %s\n' "${path}" "${needle}" >&2
+    exit 1
+  fi
+}
+
 assert_executable() {
   local path="$1"
   if [[ ! -x "${path}" ]]; then
@@ -38,6 +47,10 @@ assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "catalog-multipass"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "stack-export-ubuntu24"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "profile-export-multipass"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "onprem-basic"
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'profiles/edge/on-prem/basic.env'
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'cp "${canonical_profile}" "${ENV_FILE}"'
+assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'PK3S_INFRA_PROFILE_NAME=pk3s-cli-gha-onprem-remote'
+assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'PK3S_INFRA_SCENARIO=on-prem'
 
 assert_executable "${ROOT_DIR}/tests/run-cli-live.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh"

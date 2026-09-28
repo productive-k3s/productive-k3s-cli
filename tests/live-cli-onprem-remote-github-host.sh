@@ -15,6 +15,7 @@ ADDONS_REPO_DIR_LOCAL=""
 SSH_KEY_PATH="${WORK_DIR}/id_ed25519"
 CURRENT_USER="$(id -un)"
 LOCALHOST_IP="127.0.0.1"
+CANONICAL_PROFILE_RELATIVE_PATH="profiles/edge/on-prem/basic.env"
 
 # This GitHub-hosted live scenario is meant to exercise the source/dev surface by
 # cloning the dependent repos from GitHub, not the package-only release surface.
@@ -210,11 +211,16 @@ wait_for_ssh() {
 }
 
 write_env_file() {
-  cat > "${ENV_FILE}" <<EOF
-PK3S_INFRA_PROFILE_NAME=pk3s-cli-gha-onprem-remote
-PK3S_INFRA_SCENARIO=on-prem
-PK3S_INFRA_ENGINE=ansible
+  local canonical_profile=""
 
+  prepare_profiles_repo_dir
+  canonical_profile="${PROFILES_REPO_DIR}/${CANONICAL_PROFILE_RELATIVE_PATH}"
+  [[ -f "${canonical_profile}" ]] || fail "canonical on-prem profile not found: ${canonical_profile}"
+
+  cp "${canonical_profile}" "${ENV_FILE}"
+  cat >> "${ENV_FILE}" <<EOF
+
+# GitHub-hosted runtime overrides. Profile contract fields stay owned by Profiles.
 ONPREM_SERVER_IP=${LOCALHOST_IP}
 ONPREM_AGENT_IPS=
 ONPREM_SSH_USER=${CURRENT_USER}
