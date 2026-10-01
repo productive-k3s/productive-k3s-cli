@@ -663,6 +663,10 @@ func runBOM(ctx context.Context, args []string, deps Dependencies) int {
 	}
 
 	configuredCatalogs := catalogURLsFromEnv()
+	catalogBOM, err := resolveCatalogBOM(ctx, deps, configuredCatalogs)
+	if err != nil {
+		catalogBOM = map[string]any{"status": "unavailable", "error": err.Error()}
+	}
 
 	bom := map[string]any{
 		"schema_version": "1",
@@ -681,6 +685,7 @@ func runBOM(ctx context.Context, args []string, deps Dependencies) int {
 		"catalog": map[string]any{
 			"default_url":     bundles.CatalogURLDefault(),
 			"configured_urls": configuredCatalogs,
+			"resolved":        catalogBOM,
 		},
 		"bundles": map[string]any{
 			"source_mode": requestedSourceMode(),
@@ -2162,17 +2167,52 @@ func downloadAsset(ctx context.Context, rawURL string, deps Dependencies, ext st
 }
 
 type catalogEntry struct {
-	Kind         string
-	ID           string
-	Name         string
-	MetadataName string
-	Category     string
-	Version      string
-	Description  string
-	Visibility   string
-	ArtifactType string
-	ArtifactURL  string
-	Install      catalogInstallSummary
+	Kind            string
+	ID              string
+	Name            string
+	MetadataName    string
+	Category        string
+	Version         string
+	Description     string
+	Visibility      string
+	ArtifactType    string
+	ArtifactURL     string
+	ArtifactSHA256  string
+	BOMURL          string
+	BOMSHA256       string
+	BOMEmbeddedPath string
+	Install         catalogInstallSummary
+}
+
+func resolveCatalogBOM(ctx context.Context, deps Dependencies, sources []string) (map[string]any, error) {
+	var lastErr error
+	for _, source := range sources {
+		body, err := readCatalogSource(ctx, deps, source)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		entries := parseCatalogEntries(body)
+		packages := make([]map[string]any, 0, len(entries))
+		for _, entry := range entries {
+			packages = append(packages, map[string]any{
+				"kind": entry.Kind, "name": catalogEntryDisplayName(entry), "version": entry.Version,
+				"artifact_url": entry.ArtifactURL, "artifact_sha256": entry.ArtifactSHA256,
+				"bom_url": entry.BOMURL, "bom_sha256": entry.BOMSHA256,
+				"bom_embedded_path": entry.BOMEmbeddedPath,
+			})
+		}
+		digest := sha256.Sum256(body)
+		return map[string]any{
+			"source":   source,
+			"sha256":   hex.EncodeToString(digest[:]),
+			"packages": packages,
+		}, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("no catalog sources configured")
 }
 
 type catalogInstallSummary struct {
@@ -2474,7 +2514,22 @@ func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catal
 	if strings.TrimSpace(entry.ArtifactURL) == "" {
 		return "", fmt.Errorf("catalog entry %q does not expose a downloadable tgz URL", name)
 	}
-	return downloadAsset(ctx, entry.ArtifactURL, deps, "tgz")
+	path, err := downloadAsset(ctx, entry.ArtifactURL, deps, "tgz")
+	if err != nil {
+		return "", err
+	}
+	if expected := strings.TrimSpace(entry.ArtifactSHA256); expected != "" {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		actual := sha256.Sum256(content)
+		if hex.EncodeToString(actual[:]) != strings.ToLower(expected) {
+			_ = os.Remove(path)
+			return "", fmt.Errorf("catalog artifact checksum mismatch for %q", name)
+		}
+	}
+	return path, nil
 }
 
 func profileCatalogInstallPreflight(entry catalogEntry, env map[string]string, stderr io.Writer) int {
@@ -2702,6 +2757,19 @@ func assignCatalogField(entry *catalogEntry, section string, key string, value s
 		}
 		if key == "url" {
 			entry.ArtifactURL = value
+		}
+		if key == "sha256" {
+			entry.ArtifactSHA256 = value
+		}
+	case "bom":
+		if key == "url" {
+			entry.BOMURL = value
+		}
+		if key == "sha256" {
+			entry.BOMSHA256 = value
+		}
+		if key == "embeddedPath" {
+			entry.BOMEmbeddedPath = value
 		}
 	case "install":
 		if key == "requiresLocalOverrides" {

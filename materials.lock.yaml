@@ -1,0 +1,12 @@
+apiVersion: materials.productive-k3s.io/v1alpha1
+kind: MaterialsLock
+metadata:
+  owner: productive-k3s-cli
+  package: pk3s
+  version: 1.0.0
+spec:
+  materials:
+    - {id: go, type: binary, name: go, version: 1.24.2, source: "https://go.dev", pinPolicy: exact-toolchain, required: true}
+    - {id: productive-k3s-core, type: product-artifact, name: productive-k3s-core, version: 0.9.5, source: "https://github.com/productive-k3s/productive-k3s-core", pinPolicy: exact, required: true}
+    - {id: productive-k3s-infra, type: product-artifact, name: productive-k3s-infra, version: 0.9.64-0.9.5, source: "https://github.com/productive-k3s/productive-k3s-infra", pinPolicy: exact, required: true}
+    - {id: public-catalog, type: product-artifact, name: productive-k3s-catalog, version: runtime-sha256, source: "https://catalogs.productive-k3s.io/catalogs/index.yaml", pinPolicy: dynamic-resolved, required: true}

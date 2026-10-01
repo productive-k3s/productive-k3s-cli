@@ -139,6 +139,13 @@ make tag-release VERSION=1.0.1
 - expand user-facing command coverage beyond the initial command contract
 - document Windows PowerShell installation flow in release notes and docs
 
+## Software Materials
+
+`pk3s bom --json` composes the CLI build, delegated Core and Infra BOMs, the
+SHA-256 identity of the resolved catalog snapshot, and every package artifact
+and BOM reference exposed by that catalog. An unreachable catalog is reported
+explicitly instead of being silently omitted.
+
 ## License
 
 This project is licensed under the Apache License 2.0.
