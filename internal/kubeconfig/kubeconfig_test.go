@@ -42,3 +42,24 @@ func TestContextNameIsDeterministic(t *testing.T) {
 		t.Fatalf("unexpected context name: %s", got)
 	}
 }
+
+func TestWriteManagedAndInputErrors(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("PK3S_CLUSTER_CONFIG_DIR", base)
+	target, err := WriteManaged("Demo Cluster", "apiVersion: v1\n")
+	if err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+	if target != filepath.Join(base, "demo-cluster", "kubeconfig.yaml") {
+		t.Fatalf("unexpected target: %s", target)
+	}
+	if _, err := CopyManaged("demo", ""); err == nil {
+		t.Fatal("empty source path accepted")
+	}
+	if _, err := CopyManaged("demo", filepath.Join(base, "missing")); err == nil {
+		t.Fatal("missing source path accepted")
+	}
+	if SafeName(" ! ") != "cluster" {
+		t.Fatalf("unexpected empty safe-name fallback: %q", SafeName(" ! "))
+	}
+}

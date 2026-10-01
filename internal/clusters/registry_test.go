@@ -1,6 +1,7 @@
 package clusters
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -40,5 +41,32 @@ func TestRegistryUpsertListGetDelete(t *testing.T) {
 	}
 	if len(items) != 1 || items[0].ID != "edge" {
 		t.Fatalf("unexpected items after delete: %#v", items)
+	}
+}
+
+func TestRegistryDefaultsAndFailurePaths(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "registry.json")
+	t.Setenv("PK3S_CLUSTER_REGISTRY_PATH", path)
+	if got, err := DefaultRegistryPath(); err != nil || got != path {
+		t.Fatalf("unexpected default registry path: %q %v", got, err)
+	}
+	reg := NewRegistry(path)
+	if _, err := reg.Get("missing"); err == nil {
+		t.Fatal("missing cluster was returned")
+	}
+	if err := reg.Delete("missing"); err == nil {
+		t.Fatal("missing cluster was deleted")
+	}
+	if err := reg.Upsert(Cluster{}); err == nil {
+		t.Fatal("empty cluster id accepted")
+	}
+	if err := os.WriteFile(path, []byte("not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reg.List(); err == nil {
+		t.Fatal("invalid registry JSON accepted")
+	}
+	if _, err := NewRegistry("").List(); err == nil {
+		t.Fatal("empty registry path accepted")
 	}
 }

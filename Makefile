@@ -1,4 +1,4 @@
-.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean test test-unit test-lint test-format test-spell test-local-all test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-logs-clean test-clean-all set-bundles-versions tag-release
+.PHONY: build build-release go-test docs-build docs-serve docs-up docs-down docs-clean test test-unit test-lint test-format test-spell test-coverage test-local-all test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-logs-clean test-clean-all set-bundles-versions tag-release
 
 SCRIPTS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/scripts
 GO_BIN ?= go
@@ -41,6 +41,9 @@ test-format:
 
 test-spell:
 	$(MAKE) -C ./tests test-spell
+
+test-coverage:
+	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-coverage
 
 test-local-all:
 	GO_BIN="$(GO_BIN)" $(MAKE) -C ./tests test-local-all
