@@ -74,3 +74,7 @@ func MultipassProfileURLDefault() string {
 func CatalogURLDefault() string {
 	return envOrDefault("PRODUCTIVE_K3S_CATALOG_URL_DEFAULT", "https://catalogs.productive-k3s.io/catalogs/index.yaml")
 }
+
+func CatalogSHA256Default() string {
+	return strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT"))
+}

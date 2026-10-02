@@ -455,6 +455,16 @@ entries:
   - id: multipass-1-server-2-agents
     name: multipass-1-server-2-agents
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: local
     version: 0.9.64-0.9.5
@@ -464,6 +474,16 @@ entries:
   - id: aws-single-node-basic
     name: aws-single-node-basic
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: cloud
     version: 0.9.64-0.9.5
@@ -524,6 +544,16 @@ entries:
   - id: aws-single-node-basic
     name: aws-single-node-basic
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: cloud
     description: "AWS single node profile."
@@ -715,6 +745,16 @@ entries:
   - id: aws-single-node-basic
     name: aws-single-node-basic
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: cloud
     description: "AWS single node profile."
@@ -788,6 +828,16 @@ entries:
   - id: multipass-dev
     name: multipass-dev
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: local
     description: "Multipass development profile."
@@ -1161,6 +1211,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     metadata:
       name: nginx
     artifact:
@@ -1395,6 +1454,16 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     metadata:
       name: multipass-1-server-2-agents
     artifact:
@@ -1497,6 +1566,16 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     metadata:
       name: aws-single-node-basic
     artifact:
@@ -1593,6 +1672,16 @@ entries:
   - id: on-prem-basic
     name: on-prem-basic
     kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     visibility: public
     category: edge
     description: "On-prem profile."
@@ -1697,6 +1786,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     name: nginx
     category: example
     version: 0.1.0
@@ -1738,6 +1836,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     metadata:
       name: nginx
     artifact:
@@ -1788,6 +1895,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     name: nginx
     category: example
     version: 0.1.0
@@ -1795,6 +1911,16 @@ entries:
       type: tgz
       url: SERVER_URL/addons/nginx-0.1.0.tgz
   - kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     name: multipass-1-server-2-agents
     category: local
     version: 0.1.0
@@ -1845,6 +1971,15 @@ entries:
   - id: nginx
     name: nginx
     kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     visibility: public
     category: ingress
     description: "Nginx ingress add-on."
@@ -1853,6 +1988,16 @@ entries:
       type: tgz
       url: SERVER_URL/addons/nginx-0.1.0.tgz
   - kind: profile
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        infra:
+          contract: profile/v1
+          minEngineVersion: 0.9.64
+          maxEngineVersionExclusive: 0.10.0
+        core:
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
     name: multipass-1-server-2-agents
     category: local
     version: 0.1.0
@@ -2202,6 +2347,15 @@ entries:
   - id: cluster-health
     name: cluster-health
     kind: stack
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     visibility: public
     category: operations
     description: "Cluster health stack."
@@ -2248,6 +2402,15 @@ entries:
   - id: cluster-health
     name: cluster-health
     kind: stack
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     visibility: public
     category: operations
     description: "Cluster health stack."
@@ -2314,6 +2477,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: stack
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     metadata:
       name: cluster-health
     artifact:
@@ -2622,6 +2794,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: stack
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     metadata:
       name: cluster-health
     artifact:
@@ -2681,6 +2862,15 @@ metadata:
   name: productive-k3s-catalog
 entries:
   - kind: addon
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    compatibility:
+      requires:
+        core:
+          contract: artifact/v1
+          minVersion: 0.9.5
+          maxVersionExclusive: 0.10.0
+        kubernetes:
+          distros: [k3s, rke2]
     metadata:
       name: cert-manager
     artifact:

@@ -42,6 +42,7 @@ assert_eq "${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}" "https://github.co
 assert_eq "${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}" "https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/local/multipass/1-server-2-agents.env" "default multipass profile url"
 assert_eq "${PRODUCTIVE_K3S_CLI_REPO_DEFAULT}" "productive-k3s/productive-k3s-cli" "default cli release repo"
 assert_eq "${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}" "https://catalogs.productive-k3s.io/catalogs/index.yaml" "default catalog url"
+assert_eq "${PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT}" "" "development catalog digest"
 
 infra_core="${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT#*-}"
 assert_eq "${infra_core}" "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "infra/core compatibility suffix"

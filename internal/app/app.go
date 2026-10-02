@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/productive-k3s/productive-k3s-cli/internal/platform"
 	"github.com/productive-k3s/productive-k3s-cli/internal/tools"
 	"github.com/productive-k3s/productive-k3s-cli/internal/tui"
+	"gopkg.in/yaml.v3"
 )
 
 var Version = "1.0.0"
@@ -2181,7 +2183,55 @@ type catalogEntry struct {
 	BOMURL          string
 	BOMSHA256       string
 	BOMEmbeddedPath string
+	SourceRevision  string
+	Compatibility   catalogCompatibility
 	Install         catalogInstallSummary
+}
+
+type catalogCompatibility struct {
+	Requires struct {
+		Core struct {
+			Contract            string `yaml:"contract"`
+			MinVersion          string `yaml:"minVersion"`
+			MaxVersionExclusive string `yaml:"maxVersionExclusive"`
+		} `yaml:"core"`
+		Infra struct {
+			Contract                  string `yaml:"contract"`
+			MinEngineVersion          string `yaml:"minEngineVersion"`
+			MaxEngineVersionExclusive string `yaml:"maxEngineVersionExclusive"`
+		} `yaml:"infra"`
+		Kubernetes struct {
+			Distros []string `yaml:"distros"`
+		} `yaml:"kubernetes"`
+	} `yaml:"requires"`
+}
+
+type catalogYAML struct {
+	Entries []struct {
+		Kind           string               `yaml:"kind"`
+		ID             string               `yaml:"id"`
+		Name           string               `yaml:"name"`
+		Category       string               `yaml:"category"`
+		Version        string               `yaml:"version"`
+		Description    string               `yaml:"description"`
+		Visibility     string               `yaml:"visibility"`
+		SourceRevision string               `yaml:"sourceRevision"`
+		Compatibility  catalogCompatibility `yaml:"compatibility"`
+		Metadata       struct {
+			Name string `yaml:"name"`
+		} `yaml:"metadata"`
+		Artifact struct {
+			Type   string `yaml:"type"`
+			URL    string `yaml:"url"`
+			SHA256 string `yaml:"sha256"`
+		} `yaml:"artifact"`
+		BOM struct {
+			URL          string `yaml:"url"`
+			SHA256       string `yaml:"sha256"`
+			EmbeddedPath string `yaml:"embeddedPath"`
+		} `yaml:"bom"`
+		Install catalogInstallSummary `yaml:"install"`
+	} `yaml:"entries"`
 }
 
 func resolveCatalogBOM(ctx context.Context, deps Dependencies, sources []string) (map[string]any, error) {
@@ -2189,6 +2239,10 @@ func resolveCatalogBOM(ctx context.Context, deps Dependencies, sources []string)
 	for _, source := range sources {
 		body, err := readCatalogSource(ctx, deps, source)
 		if err != nil {
+			lastErr = err
+			continue
+		}
+		if err := verifyCatalogSourceDigest(source, body); err != nil {
 			lastErr = err
 			continue
 		}
@@ -2216,16 +2270,16 @@ func resolveCatalogBOM(ctx context.Context, deps Dependencies, sources []string)
 }
 
 type catalogInstallSummary struct {
-	RequiresLocalOverrides bool
-	Inputs                 []catalogInput
+	RequiresLocalOverrides bool           `yaml:"requiresLocalOverrides"`
+	Inputs                 []catalogInput `yaml:"inputs"`
 }
 
 type catalogInput struct {
-	Name        string
-	Required    bool
-	Sensitive   bool
-	Source      string
-	Description string
+	Name        string `yaml:"name"`
+	Required    bool   `yaml:"required"`
+	Sensitive   bool   `yaml:"sensitive"`
+	Source      string `yaml:"source"`
+	Description string `yaml:"description"`
 }
 
 func resolveCatalogTGZ(ctx context.Context, deps Dependencies, kind string, name string) (string, error) {
@@ -2487,7 +2541,28 @@ func loadCatalogEntries(ctx context.Context, deps Dependencies, source string) (
 	if err != nil {
 		return nil, err
 	}
+	if err := verifyCatalogSourceDigest(source, body); err != nil {
+		return nil, err
+	}
 	return parseCatalogEntries(body), nil
+}
+
+func verifyCatalogSourceDigest(source string, body []byte) error {
+	expected := strings.ToLower(strings.TrimSpace(bundles.CatalogSHA256Default()))
+	if expected == "" || source != bundles.CatalogURLDefault() {
+		return nil
+	}
+	if len(expected) != sha256.Size*2 {
+		return fmt.Errorf("configured catalog SHA-256 is invalid")
+	}
+	if _, err := hex.DecodeString(expected); err != nil {
+		return fmt.Errorf("configured catalog SHA-256 is invalid")
+	}
+	actual := sha256.Sum256(body)
+	if hex.EncodeToString(actual[:]) != expected {
+		return fmt.Errorf("catalog checksum mismatch for pinned source %s", source)
+	}
+	return nil
 }
 
 func findCatalogEntry(ctx context.Context, deps Dependencies, kind string, name string) (catalogEntry, error) {
@@ -2508,6 +2583,9 @@ func findCatalogEntry(ctx context.Context, deps Dependencies, kind string, name 
 
 func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catalogEntry) (string, error) {
 	name := catalogEntryDisplayName(entry)
+	if err := validateCatalogEntryCompatibility(entry, bundles.DefaultReleaseManifest()); err != nil {
+		return "", err
+	}
 	if entry.ArtifactType != "tgz" {
 		return "", fmt.Errorf("catalog entry %q does not expose a tgz artifact", name)
 	}
@@ -2530,6 +2608,95 @@ func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catal
 		}
 	}
 	return path, nil
+}
+
+type stableSemver [3]int
+
+func parseStableSemver(value string) (stableSemver, error) {
+	parts := strings.Split(strings.TrimPrefix(strings.TrimSpace(value), "v"), ".")
+	if len(parts) != 3 {
+		return stableSemver{}, fmt.Errorf("%q is not a stable semantic version", value)
+	}
+	var result stableSemver
+	for index, part := range parts {
+		parsed, err := strconv.Atoi(part)
+		if err != nil || parsed < 0 {
+			return stableSemver{}, fmt.Errorf("%q is not a stable semantic version", value)
+		}
+		result[index] = parsed
+	}
+	return result, nil
+}
+
+func compareStableSemver(left stableSemver, right stableSemver) int {
+	for index := range left {
+		if left[index] < right[index] {
+			return -1
+		}
+		if left[index] > right[index] {
+			return 1
+		}
+	}
+	return 0
+}
+
+func validateVersionWindow(subject string, runtimeName string, running string, minimum string, maximum string) error {
+	runningVersion, err := parseStableSemver(running)
+	if err != nil {
+		return fmt.Errorf("%s is incompatible: running %s version is not comparable: %s", subject, runtimeName, running)
+	}
+	minimumVersion, err := parseStableSemver(minimum)
+	if err != nil {
+		return fmt.Errorf("%s is incompatible: invalid %s minimum version %q", subject, runtimeName, minimum)
+	}
+	maximumVersion, err := parseStableSemver(maximum)
+	if err != nil || compareStableSemver(minimumVersion, maximumVersion) >= 0 {
+		return fmt.Errorf("%s is incompatible: invalid %s exclusive maximum version %q", subject, runtimeName, maximum)
+	}
+	if compareStableSemver(runningVersion, minimumVersion) < 0 || compareStableSemver(runningVersion, maximumVersion) >= 0 {
+		return fmt.Errorf("%s is incompatible: requires %s >=%s and <%s; running %s %s; upgrade the runtime or select an older compatible artifact", subject, runtimeName, minimum, maximum, runtimeName, running)
+	}
+	return nil
+}
+
+func splitInfraRelease(value string) (string, string, error) {
+	parts := strings.Split(strings.TrimPrefix(strings.TrimSpace(value), "v"), "-")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("Infra release %q does not bind an exact Core version", value)
+	}
+	if _, err := parseStableSemver(parts[0]); err != nil {
+		return "", "", err
+	}
+	if _, err := parseStableSemver(parts[1]); err != nil {
+		return "", "", err
+	}
+	return parts[0], parts[1], nil
+}
+
+func validateCatalogEntryCompatibility(entry catalogEntry, release bundles.ReleaseManifest) error {
+	subject := fmt.Sprintf("%s %s %s", entry.Kind, catalogEntryDisplayName(entry), entry.Version)
+	decodedRevision, revisionError := hex.DecodeString(entry.SourceRevision)
+	if revisionError != nil || len(decodedRevision) != 20 {
+		return fmt.Errorf("%s is incompatible: immutable sourceRevision is missing", subject)
+	}
+	requires := entry.Compatibility.Requires
+	if entry.Kind == "profile" {
+		if requires.Infra.Contract != "profile/v1" {
+			return fmt.Errorf("%s is incompatible: unsupported Infra contract %q", subject, requires.Infra.Contract)
+		}
+		infraVersion, coreVersion, err := splitInfraRelease(release.InfraVersion)
+		if err != nil {
+			return fmt.Errorf("%s is incompatible: %v", subject, err)
+		}
+		if err := validateVersionWindow(subject, "Infra", infraVersion, requires.Infra.MinEngineVersion, requires.Infra.MaxEngineVersionExclusive); err != nil {
+			return err
+		}
+		return validateVersionWindow(subject, "Core", coreVersion, requires.Core.MinVersion, requires.Core.MaxVersionExclusive)
+	}
+	if requires.Core.Contract != "artifact/v1" {
+		return fmt.Errorf("%s is incompatible: unsupported Core contract %q", subject, requires.Core.Contract)
+	}
+	return validateVersionWindow(subject, "Core", release.CoreVersion, requires.Core.MinVersion, requires.Core.MaxVersionExclusive)
 }
 
 func profileCatalogInstallPreflight(entry catalogEntry, env map[string]string, stderr io.Writer) int {
@@ -2639,175 +2806,22 @@ func readCatalogSource(ctx context.Context, deps Dependencies, source string) ([
 }
 
 func parseCatalogEntries(body []byte) []catalogEntry {
-	lines := strings.Split(string(body), "\n")
-	entries := []catalogEntry{}
-	var current *catalogEntry
-	section := ""
-	subsection := ""
-	var currentInput *catalogInput
-	flushInput := func() {
-		if current != nil && currentInput != nil {
-			current.Install.Inputs = append(current.Install.Inputs, *currentInput)
-			currentInput = nil
-		}
+	var document catalogYAML
+	if err := yaml.Unmarshal(body, &document); err != nil {
+		return nil
 	}
-	flush := func() {
-		if current != nil {
-			flushInput()
-			entries = append(entries, *current)
-		}
+	entries := make([]catalogEntry, 0, len(document.Entries))
+	for _, raw := range document.Entries {
+		entries = append(entries, catalogEntry{
+			Kind: raw.Kind, ID: raw.ID, Name: raw.Name, MetadataName: raw.Metadata.Name,
+			Category: raw.Category, Version: raw.Version, Description: raw.Description,
+			Visibility: raw.Visibility, ArtifactType: raw.Artifact.Type,
+			ArtifactURL: raw.Artifact.URL, ArtifactSHA256: raw.Artifact.SHA256,
+			BOMURL: raw.BOM.URL, BOMSHA256: raw.BOM.SHA256, BOMEmbeddedPath: raw.BOM.EmbeddedPath,
+			SourceRevision: raw.SourceRevision, Compatibility: raw.Compatibility, Install: raw.Install,
+		})
 	}
-	for _, raw := range lines {
-		line := strings.TrimRight(raw, " \t\r")
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
-		}
-		if strings.TrimSpace(line) == "entries:" {
-			continue
-		}
-		if strings.HasPrefix(line, "  - ") {
-			flush()
-			current = &catalogEntry{}
-			section = ""
-			subsection = ""
-			rest := strings.TrimSpace(strings.TrimPrefix(line, "  - "))
-			if rest != "" && strings.Contains(rest, ":") {
-				key, value, ok := yamlKV(rest)
-				if ok {
-					assignCatalogField(current, section, key, value)
-				}
-			}
-			continue
-		}
-		if current == nil {
-			continue
-		}
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		trimmed := strings.TrimSpace(line)
-		if section == "install" && subsection == "inputs" && strings.HasPrefix(line, "        - ") {
-			flushInput()
-			currentInput = &catalogInput{}
-			rest := strings.TrimSpace(strings.TrimPrefix(line, "        - "))
-			key, value, ok := yamlKV(rest)
-			if ok {
-				assignCatalogInputField(currentInput, key, value)
-			}
-			continue
-		}
-		if section == "install" && subsection == "inputs" && currentInput != nil && indent >= 10 {
-			key, value, ok := yamlKV(trimmed)
-			if ok {
-				assignCatalogInputField(currentInput, key, value)
-			}
-			continue
-		}
-		if strings.HasSuffix(trimmed, ":") {
-			if indent <= 6 {
-				flushInput()
-			}
-			if indent == 4 {
-				section = strings.TrimSuffix(trimmed, ":")
-				subsection = ""
-			}
-			if indent == 6 {
-				subsection = strings.TrimSuffix(trimmed, ":")
-			}
-			continue
-		}
-		key, value, ok := yamlKV(trimmed)
-		if !ok {
-			continue
-		}
-		assignCatalogField(current, sectionForIndent(section, indent), key, value)
-	}
-	flush()
 	return entries
-}
-
-func sectionForIndent(section string, indent int) string {
-	if indent >= 6 {
-		return section
-	}
-	return ""
-}
-
-func yamlKV(line string) (string, string, bool) {
-	parts := strings.SplitN(line, ":", 2)
-	if len(parts) != 2 {
-		return "", "", false
-	}
-	key := strings.TrimSpace(parts[0])
-	value := strings.TrimSpace(parts[1])
-	value = strings.Trim(value, "\"")
-	if value == "null" {
-		value = ""
-	}
-	return key, value, true
-}
-
-func assignCatalogField(entry *catalogEntry, section string, key string, value string) {
-	switch section {
-	case "metadata":
-		if key == "name" {
-			entry.MetadataName = value
-		}
-	case "artifact":
-		if key == "type" {
-			entry.ArtifactType = value
-		}
-		if key == "url" {
-			entry.ArtifactURL = value
-		}
-		if key == "sha256" {
-			entry.ArtifactSHA256 = value
-		}
-	case "bom":
-		if key == "url" {
-			entry.BOMURL = value
-		}
-		if key == "sha256" {
-			entry.BOMSHA256 = value
-		}
-		if key == "embeddedPath" {
-			entry.BOMEmbeddedPath = value
-		}
-	case "install":
-		if key == "requiresLocalOverrides" {
-			entry.Install.RequiresLocalOverrides = strings.EqualFold(value, "true")
-		}
-	default:
-		switch key {
-		case "kind":
-			entry.Kind = value
-		case "id":
-			entry.ID = value
-		case "name":
-			entry.Name = value
-		case "category":
-			entry.Category = value
-		case "version":
-			entry.Version = value
-		case "description":
-			entry.Description = value
-		case "visibility":
-			entry.Visibility = value
-		}
-	}
-}
-
-func assignCatalogInputField(input *catalogInput, key string, value string) {
-	switch key {
-	case "name":
-		input.Name = value
-	case "required":
-		input.Required = strings.EqualFold(value, "true")
-	case "sensitive":
-		input.Sensitive = strings.EqualFold(value, "true")
-	case "source":
-		input.Source = value
-	case "description":
-		input.Description = value
-	}
 }
 
 func catalogEntryMatchesName(entry catalogEntry, name string) bool {
