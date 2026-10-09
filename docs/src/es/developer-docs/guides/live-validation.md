@@ -2,7 +2,7 @@
 
 `pk3s` ahora tiene una capa chica de validación live enfocada en el flujo público remoto.
 
-El objetivo es acotado: probar que el CLI puede resolver bundles remotos publicados, aceptar tanto una URL de profile remota como un `.env` local generado, y ejecutar de punta a punta el release correspondiente de `productive-k3s-infra`.
+El objetivo es acotado: probar que el CLI puede resolver bundles publicados o un grafo source alineado explícitamente, aceptar un package de profile o un `.env` local generado, y ejecutar `productive-k3s-infra` de punta a punta.
 
 ## Entry points
 
@@ -26,14 +26,15 @@ make -C tests test-live-remote SCENARIOS=onprem-basic
 
 El validador:
 
-1. fuerza `PRODUCTIVE_K3S_SOURCE=remote`
-2. valida la URL publicada del profile de Multipass con `pk3s profile validate`
-3. corre `pk3s plan`
-4. corre `pk3s apply`
-5. corre `pk3s status`
-6. corre `pk3s destroy`
+1. usa bundles publicados por defecto, o checkouts source cuando recibe refs/directorios de repositorios
+2. deriva las versiones de compatibilidad source desde los checkouts seleccionados de Core e Infra
+3. valida el profile de Multipass con `pk3s profile validate`
+4. corre `pk3s plan`
+5. corre `pk3s apply`
+6. corre `pk3s status`
+7. corre `pk3s destroy`
 
-Esto es la prueba más directa, a nivel CLI, de que el bundle remoto publicado de Infra sirve para el profile integrado de Multipass.
+Esto es la prueba más directa, a nivel CLI, de que tanto un grafo source coordinado como el bundle publicado de Infra sirven para el profile de Multipass.
 
 ### `catalog-multipass`
 
@@ -86,6 +87,8 @@ Los manifests incluyen:
 ## Notas
 
 - Estos validadores están separados intencionalmente de `test-local-all`.
+- Los harnesses source-aligned entregan las versiones de Core e Infra como un único par; CLI falla cerrado si ese par está incompleto, es inválido o no está ligado entre sí. El modo source sin un par explícito conserva los pins de compatibilidad compilados.
+- El isolated de Ops alinea Core, Infra, Profiles y Addons con el ref solicitado para `live-remote`; `live-catalog` permanece como gate de artefactos publicados.
 - También requieren un toolchain local funcional de `Go`, porque los targets live compilan `pk3s` antes de correr las validaciones.
 - Requieren dependencias reales como `multipass`, `ssh`, `curl`, `tar` y `python3`.
 - `onprem-basic` no usa `pk3s destroy`, porque ese escenario no expone un contrato público de destroy. La limpieza se hace borrando las VMs temporales.

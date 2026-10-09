@@ -47,6 +47,11 @@ assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "catalog-multipass"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "stack-export-ubuntu24"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "profile-export-multipass"
 assert_contains "${ROOT_DIR}/tests/run-cli-live.sh" "onprem-basic"
+assert_contains "${ROOT_DIR}/tests/lib/source-compatibility.sh" "PRODUCTIVE_K3S_SOURCE_CORE_VERSION"
+assert_contains "${ROOT_DIR}/tests/lib/source-compatibility.sh" "PRODUCTIVE_K3S_SOURCE_INFRA_VERSION"
+assert_contains "${ROOT_DIR}/tests/live-cli-multipass-remote.sh" "pk3s_export_source_compatibility"
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" "pk3s_export_source_compatibility"
+assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" "pk3s_export_source_compatibility"
 assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'profiles/edge/on-prem/basic.env'
 assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'cp "${canonical_profile}" "${ENV_FILE}"'
 assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote-github-host.sh" 'PK3S_INFRA_PROFILE_NAME=pk3s-cli-gha-onprem-remote'

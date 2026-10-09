@@ -64,6 +64,60 @@ func TestValidateCatalogEntryCompatibilityFailsClosed(t *testing.T) {
 	}
 }
 
+func TestCompatibilityReleaseManifestUsesSourceVersionsOnlyInLocalMode(t *testing.T) {
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	release, err := compatibilityReleaseManifest()
+	if err != nil || release != bundles.DefaultReleaseManifest() {
+		t.Fatalf("local mode without an explicit source pair must retain compiled pins: %#v, %v", release, err)
+	}
+
+	t.Setenv("PRODUCTIVE_K3S_SOURCE_CORE_VERSION", "0.9.6")
+	t.Setenv("PRODUCTIVE_K3S_SOURCE_INFRA_VERSION", "0.9.65-0.9.6")
+
+	release, err = compatibilityReleaseManifest()
+	if err != nil {
+		t.Fatalf("expected valid local compatibility manifest: %v", err)
+	}
+	if release.CoreVersion != "0.9.6" || release.InfraVersion != "0.9.65-0.9.6" {
+		t.Fatalf("unexpected local compatibility manifest: %#v", release)
+	}
+
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "remote")
+	t.Setenv("PRODUCTIVE_K3S_SOURCE_CORE_VERSION", "9.9.9")
+	t.Setenv("PRODUCTIVE_K3S_SOURCE_INFRA_VERSION", "9.9.9-9.9.9")
+	release, err = compatibilityReleaseManifest()
+	if err != nil {
+		t.Fatalf("remote compatibility manifest should ignore source overrides: %v", err)
+	}
+	if release != bundles.DefaultReleaseManifest() {
+		t.Fatalf("remote mode must use compiled release pins: %#v", release)
+	}
+}
+
+func TestCompatibilityReleaseManifestFailsClosedForInvalidSourceMetadata(t *testing.T) {
+	t.Setenv("PRODUCTIVE_K3S_SOURCE", "local")
+	cases := []struct {
+		name  string
+		core  string
+		infra string
+		want  string
+	}{
+		{name: "missing core", infra: "0.9.65-0.9.6", want: "PRODUCTIVE_K3S_SOURCE_CORE_VERSION"},
+		{name: "missing infra", core: "0.9.6", want: "PRODUCTIVE_K3S_SOURCE_INFRA_VERSION"},
+		{name: "mismatched binding", core: "0.9.6", infra: "0.9.65-0.9.5", want: "bound to Core 0.9.5"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PRODUCTIVE_K3S_SOURCE_CORE_VERSION", tc.core)
+			t.Setenv("PRODUCTIVE_K3S_SOURCE_INFRA_VERSION", tc.infra)
+			_, err := compatibilityReleaseManifest()
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
 func TestParseCatalogEntriesReadsCompatibility(t *testing.T) {
 	body := []byte(`entries:
   - id: nginx

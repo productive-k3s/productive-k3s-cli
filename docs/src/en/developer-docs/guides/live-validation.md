@@ -2,7 +2,7 @@
 
 `pk3s` now has a small live validation layer focused on the public remote workflow.
 
-The goal is narrow: prove that the CLI can resolve published remote bundles, accept either a remote profile URL or a generated local `.env`, and drive the corresponding `productive-k3s-infra` release end to end.
+The goal is narrow: prove that the CLI can resolve either published bundles or an explicitly aligned source graph, accept a profile package or generated local `.env`, and drive `productive-k3s-infra` end to end.
 
 ## Entry points
 
@@ -28,14 +28,15 @@ make -C tests test-live-export
 
 The validator:
 
-1. forces `PRODUCTIVE_K3S_SOURCE=remote`
-2. validates the published Multipass profile URL through `pk3s profile validate`
-3. runs `pk3s plan`
-4. runs `pk3s apply`
-5. runs `pk3s status`
-6. runs `pk3s destroy`
+1. uses published bundles by default, or source checkouts when repository refs/directories are supplied
+2. derives the source compatibility versions from the selected Core and Infra checkouts
+3. validates the Multipass profile through `pk3s profile validate`
+4. runs `pk3s plan`
+5. runs `pk3s apply`
+6. runs `pk3s status`
+7. runs `pk3s destroy`
 
-This is the closest CLI-level proof that the remote published Infra bundle is usable for the built-in Multipass profile.
+This is the closest CLI-level proof that either a coordinated source graph or the published Infra bundle is usable for the Multipass profile.
 
 ### `catalog-multipass`
 
@@ -115,6 +116,8 @@ The manifests include:
 ## Notes
 
 - These validators are intentionally separate from `test-local-all`.
+- Source-aligned harnesses provide Core and Infra versions as one pair; CLI fails closed if that pair is incomplete, invalid, or not mutually bound. Source mode without an explicit pair retains the compiled compatibility pins.
+- The Ops isolated runner aligns Core, Infra, Profiles, and Addons to its requested ref for `live-remote`, while `live-catalog` remains a published-artifact gate.
 - They also require a working local `Go` toolchain because the live targets build `pk3s` before running the validators.
 - They require real dependencies such as `multipass`, `ssh`, `curl`, `tar`, and `python3`.
 - `onprem-basic` does not use `pk3s destroy`, because that scenario does not expose a public destroy contract. Cleanup is done by deleting the temporary VMs.

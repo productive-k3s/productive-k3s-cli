@@ -2583,7 +2583,11 @@ func findCatalogEntry(ctx context.Context, deps Dependencies, kind string, name 
 
 func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catalogEntry) (string, error) {
 	name := catalogEntryDisplayName(entry)
-	if err := validateCatalogEntryCompatibility(entry, bundles.DefaultReleaseManifest()); err != nil {
+	release, err := compatibilityReleaseManifest()
+	if err != nil {
+		return "", err
+	}
+	if err := validateCatalogEntryCompatibility(entry, release); err != nil {
 		return "", err
 	}
 	if entry.ArtifactType != "tgz" {
@@ -2608,6 +2612,30 @@ func downloadCatalogEntryTGZ(ctx context.Context, deps Dependencies, entry catal
 		}
 	}
 	return path, nil
+}
+
+func compatibilityReleaseManifest() (bundles.ReleaseManifest, error) {
+	release := bundles.DefaultReleaseManifest()
+	if requestedSourceMode() != "local" {
+		return release, nil
+	}
+
+	coreVersion := strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_SOURCE_CORE_VERSION"))
+	infraVersion := strings.TrimSpace(os.Getenv("PRODUCTIVE_K3S_SOURCE_INFRA_VERSION"))
+	if coreVersion == "" && infraVersion == "" {
+		return release, nil
+	}
+	if _, err := parseStableSemver(coreVersion); err != nil {
+		return bundles.ReleaseManifest{}, fmt.Errorf("local source compatibility requires PRODUCTIVE_K3S_SOURCE_CORE_VERSION with a stable semantic version")
+	}
+	_, boundCoreVersion, err := splitInfraRelease(infraVersion)
+	if err != nil {
+		return bundles.ReleaseManifest{}, fmt.Errorf("local source compatibility requires PRODUCTIVE_K3S_SOURCE_INFRA_VERSION as <infra>-<core>: %v", err)
+	}
+	if boundCoreVersion != strings.TrimPrefix(coreVersion, "v") {
+		return bundles.ReleaseManifest{}, fmt.Errorf("local source compatibility mismatch: Infra %s is bound to Core %s, not Core %s", infraVersion, boundCoreVersion, coreVersion)
+	}
+	return bundles.ReleaseManifest{CoreVersion: coreVersion, InfraVersion: infraVersion}, nil
 }
 
 type stableSemver [3]int
