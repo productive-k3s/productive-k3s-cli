@@ -66,6 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           make test-unit
+          make test-coverage
           make test-lint
           make test-format
           make test-spell

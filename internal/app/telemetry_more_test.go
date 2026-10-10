@@ -175,3 +175,24 @@ func TestPromptTelemetryConsentAcceptsAndRejects(t *testing.T) {
 		t.Fatalf("expected consent prompt text, got %q", stderr.String())
 	}
 }
+
+func TestResolveTelemetryOverrideAndTerminalDetection(t *testing.T) {
+	enabled := true
+	got, err := resolveTelemetryEnabled(&enabled)
+	if err != nil || !got {
+		t.Fatalf("explicit telemetry override failed: enabled=%v err=%v", got, err)
+	}
+	// The result depends on the test runner, but probing file modes must be safe.
+	_ = isInteractiveTerminal()
+}
+
+func TestResolveTelemetryDefaultsOffWithoutPreference(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := os.Unsetenv("TELEMETRY_ENABLED"); err != nil {
+		t.Fatal(err)
+	}
+	enabled, err := resolveTelemetryEnabled(nil)
+	if err != nil || enabled {
+		t.Fatalf("expected non-interactive telemetry default off: enabled=%v err=%v", enabled, err)
+	}
+}

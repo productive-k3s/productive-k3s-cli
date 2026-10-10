@@ -93,6 +93,8 @@ fi
 
 replace_in_file "${REPO_ROOT}/scripts/release-config.sh" 'PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:=\K[0-9]+\.[0-9]+\.[0-9]+' "${CORE_VERSION}"
 replace_in_file "${REPO_ROOT}/scripts/release-config.sh" 'PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:=\K[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+' "${INFRA_VERSION}"
+replace_in_file "${REPO_ROOT}/materials.lock.yaml" 'id: productive-k3s-core, type: product-artifact, name: productive-k3s-core, version: \K[^,]+' "${CORE_VERSION}"
+replace_in_file "${REPO_ROOT}/materials.lock.yaml" 'id: productive-k3s-infra, type: product-artifact, name: productive-k3s-infra, version: \K[^,]+' "${INFRA_VERSION}"
 replace_in_file "${REPO_ROOT}/internal/bundles/types.go" 'CoreVersion:\s+"\K[0-9]+\.[0-9]+\.[0-9]+' "${CORE_VERSION}"
 replace_in_file "${REPO_ROOT}/internal/bundles/types.go" 'InfraVersion:\s+"\K[0-9]+\.[0-9]+\.[0-9]+-[0-9]+\.[0-9]+\.[0-9]+' "${INFRA_VERSION}"
 replace_in_file "${REPO_ROOT}/internal/bundles/helpers_test.go" 'productive-k3s-core-[0-9]+\.[0-9]+\.[0-9]+\.tar\.gz' "productive-k3s-core-${CORE_VERSION}.tar.gz"

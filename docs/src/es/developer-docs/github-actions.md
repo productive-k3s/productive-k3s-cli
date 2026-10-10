@@ -7,3 +7,8 @@ El repositorio del CLI sigue la misma separación general de automatización que
 - Los tags de release generan archives versionados del CLI e instaladores.
 
 El sitio de documentación se publica con un workflow dedicado y mantiene `cli.productive-k3s.io` fijo tanto por el setting `cname` del workflow como por el archivo versionado `docs/src/CNAME`.
+
+Los tags semánticos de release cuyo commit ya pertenece a `main` construyen
+archivos del CLI para Linux, macOS y Windows. El workflow de release publica
+esos archivos junto con un único `checksums.txt` en el release correspondiente
+de GitHub.

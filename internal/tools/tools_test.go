@@ -18,3 +18,19 @@ func TestEnvWithKubeconfigOnlyChangesChildEnv(t *testing.T) {
 		t.Fatalf("child env missing kubeconfig override: %#v", child)
 	}
 }
+
+func TestDetectAndCurrentEnvironment(t *testing.T) {
+	found := Detect("sh")
+	if !found.Found || found.Path == "" {
+		t.Fatalf("expected sh to be detected: %#v", found)
+	}
+	missing := Detect("pk3s-command-that-does-not-exist")
+	if missing.Found || missing.ErrorText == "" {
+		t.Fatalf("expected missing tool status: %#v", missing)
+	}
+	t.Setenv("PK3S_COVERAGE_SENTINEL", "present")
+	env := CurrentEnvWithKubeconfig("/tmp/current.yaml")
+	if !slices.Contains(env, "KUBECONFIG=/tmp/current.yaml") || !slices.Contains(env, "PK3S_COVERAGE_SENTINEL=present") {
+		t.Fatalf("unexpected current child environment: %#v", env)
+	}
+}

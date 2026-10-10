@@ -129,7 +129,7 @@ make test-live-catalog
 make test-live-export
 make test-clean-all
 make docs-build
-make set-bundles-versions CORE_VERSION=0.9.5 INFRA_VERSION=0.9.64-0.9.5
+make set-bundles-versions CORE_VERSION=0.9.6 INFRA_VERSION=0.9.65-0.9.6
 make tag-release VERSION=1.0.1
 ```
 
@@ -138,6 +138,13 @@ make tag-release VERSION=1.0.1
 - publish versioned CLI release archives and installer assets
 - expand user-facing command coverage beyond the initial command contract
 - document Windows PowerShell installation flow in release notes and docs
+
+## Software Materials
+
+`pk3s bom --json` composes the CLI build, delegated Core and Infra BOMs, the
+SHA-256 identity of the resolved catalog snapshot, and every package artifact
+and BOM reference exposed by that catalog. An unreachable catalog is reported
+explicitly instead of being silently omitted.
 
 ## License
 

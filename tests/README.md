@@ -46,6 +46,9 @@ make -C tests test-clean-all
 Latest local `make -C tests test-coverage` run:
 
 - total Go coverage: `80.0%`
+
+`test-coverage` enforces an `80%` repository floor. Use
+`PK3S_COVERAGE_MIN=<value>` only to raise the threshold for a focused run.
 - `internal/app`: `80.8%`
 - `internal/bundles`: `77.8%`
 - `internal/platform`: `100.0%`

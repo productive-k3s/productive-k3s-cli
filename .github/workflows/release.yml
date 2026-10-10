@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          git fetch origin main:refs/remotes/origin/main --force
+          git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          make build-release
+          (
+            cd dist
+            sha256sum pk3s-${GITHUB_REF_NAME}-* > checksums.txt
+          )
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/pk3s-${GITHUB_REF_NAME}-* \
+            dist/checksums.txt \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag

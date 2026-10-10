@@ -58,6 +58,13 @@ Ejemplo:
 
 El CLI debe rechazar combinaciones arbitrarias o incompatibles de Core/Infra.
 
+Las instalaciones resueltas desde Catalogs también validan anticipadamente la
+metadata de compatibilidad copiada del artefacto. Los add-ons y stacks se
+comparan con la versión fijada de Core; los profiles se comparan con ambas
+partes del release compuesto de Infra. Esto mejora el diagnóstico, pero Core e
+Infra siguen siendo los validadores autoritativos para TGZ ejecutados en forma
+directa.
+
 ## Defaults del repositorio
 
 Los defaults versionados que usa el repositorio para resolver bundles remotos viven en `scripts/release-config.sh`:

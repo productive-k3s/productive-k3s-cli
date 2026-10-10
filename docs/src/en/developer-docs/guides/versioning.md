@@ -58,6 +58,12 @@ Example:
 
 The CLI must reject arbitrary or incompatible Core/Infra combinations.
 
+Catalog-backed installs also preflight the copied artifact compatibility
+metadata before download. Add-ons and stacks are checked against the pinned
+Core version; profiles are checked against both parts of the pinned composite
+Infra release. This improves feedback, while Core and Infra remain the
+authoritative validators for direct TGZ execution.
+
 ## Repository defaults
 
 The checked-in defaults used for remote bundle resolution live in `scripts/release-config.sh`:

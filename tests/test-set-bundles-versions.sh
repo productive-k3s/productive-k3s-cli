@@ -74,6 +74,8 @@ git -C "${infra_seed}" push --quiet origin HEAD "refs/tags/${TARGET_INFRA_VERSIO
 
 assert_contains_file "${WORKTREE}/scripts/release-config.sh" "PRODUCTIVE_K3S_CORE_VERSION_DEFAULT:=${TARGET_CORE_VERSION}"
 assert_contains_file "${WORKTREE}/scripts/release-config.sh" "PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT:=${TARGET_INFRA_VERSION}"
+assert_contains_file "${WORKTREE}/materials.lock.yaml" "id: productive-k3s-core, type: product-artifact, name: productive-k3s-core, version: ${TARGET_CORE_VERSION}"
+assert_contains_file "${WORKTREE}/materials.lock.yaml" "id: productive-k3s-infra, type: product-artifact, name: productive-k3s-infra, version: ${TARGET_INFRA_VERSION}"
 assert_contains_file "${WORKTREE}/README.md" "make set-bundles-versions CORE_VERSION=${TARGET_CORE_VERSION} INFRA_VERSION=${TARGET_INFRA_VERSION}"
 assert_contains_file "${WORKTREE}/internal/bundles/types.go" "CoreVersion:  \"${TARGET_CORE_VERSION}\""
 assert_contains_file "${WORKTREE}/internal/bundles/types.go" "InfraVersion: \"${TARGET_INFRA_VERSION}\""

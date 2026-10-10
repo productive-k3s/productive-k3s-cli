@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/scripts/release-config.sh"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/tests/lib/source-compatibility.sh"
 WORK_ROOT="${PK3S_CLI_ONPREM_REMOTE_WORK_ROOT:-${HOME}}"
 WORK_DIR="$(mktemp -d "${WORK_ROOT}/pk3s-live-cli-onprem-remote.XXXXXX")"
 STAMP="$(date +%Y%m%d%H%M%S)"
@@ -264,6 +266,9 @@ run_pk3s() {
     prepare_profiles_repo_dir
     prepare_core_repo_dir
     prepare_addons_repo_dir
+    pk3s_export_source_compatibility \
+      "${PRODUCTIVE_K3S_REPO:-${CORE_REPO_DIR_LOCAL}}" \
+      "${PRODUCTIVE_K3S_INFRA_REPO_DIR:-${INFRA_REPO_DIR_LOCAL}}"
   fi
   PRODUCTIVE_K3S_SOURCE="${source_mode}" \
     PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS="${PRODUCTIVE_K3S_AUTO_APPROVE_PREFLIGHT_WARNINGS:-true}" \

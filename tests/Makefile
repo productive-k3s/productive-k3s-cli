@@ -37,6 +37,7 @@ test-static-raw:
 	$(MAKE) docs-publish-check
 	bash ./test-release-versioning.sh
 	bash ./test-set-bundles-versions.sh
+	bash ./test-set-catalog-snapshot.sh
 	bash ./test-tag-release.sh
 	bash ./test-live-artifacts.sh
 	bash ./test-live-wiring.sh
