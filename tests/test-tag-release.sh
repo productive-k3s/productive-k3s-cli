@@ -68,9 +68,9 @@ git -C "${core_seed}" config user.email tester@example.com
 printf 'core\n' > "${core_seed}/README.md"
 git -C "${core_seed}" add README.md
 git -C "${core_seed}" commit -m "seed" >/dev/null
-git -C "${core_seed}" tag 0.9.5
+git -C "${core_seed}" tag 0.9.6
 git -C "${core_seed}" remote add origin "${CORE_REMOTE}"
-git -C "${core_seed}" push --quiet origin HEAD refs/tags/0.9.5
+git -C "${core_seed}" push --quiet origin HEAD refs/tags/0.9.6
 
 infra_seed="${TMP_DIR}/infra-seed"
 git init "${infra_seed}" >/dev/null
@@ -79,9 +79,9 @@ git -C "${infra_seed}" config user.email tester@example.com
 printf 'infra\n' > "${infra_seed}/README.md"
 git -C "${infra_seed}" add README.md
 git -C "${infra_seed}" commit -m "seed" >/dev/null
-git -C "${infra_seed}" tag 0.9.64-0.9.5
+git -C "${infra_seed}" tag 0.9.65-0.9.6
 git -C "${infra_seed}" remote add origin "${INFRA_REMOTE}"
-git -C "${infra_seed}" push --quiet origin HEAD refs/tags/0.9.64-0.9.5
+git -C "${infra_seed}" push --quiet origin HEAD refs/tags/0.9.65-0.9.6
 
 output="$(
   cd "${WORKTREE}" && \

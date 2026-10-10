@@ -32,7 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Version = "1.0.0"
+var Version = "0.9.65"
 
 type Dependencies struct {
 	Stdout     io.Writer

@@ -63,8 +63,8 @@ These commands delegate to Productive K3S Infra.
 
 The current remote baseline is:
 
-- Productive K3S Core `0.9.5`
-- Productive K3S Infra `0.9.64-0.9.5`
+- Productive K3S Core `0.9.6`
+- Productive K3S Infra `0.9.65-0.9.6`
 
 The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public command surfaces.
 

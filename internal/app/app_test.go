@@ -78,7 +78,7 @@ func TestRunVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	if got := stdout.String(); got != "1.0.0\n" {
+	if got := stdout.String(); got != "0.9.65\n" {
 		t.Fatalf("unexpected version output: %q", got)
 	}
 	if stderr.Len() != 0 {
@@ -135,12 +135,12 @@ func TestRunBOMJSONIncludesRecursiveBundleDetail(t *testing.T) {
 				if got := bytes.Join([][]byte{[]byte(invocation.Args[0]), []byte(invocation.Args[1])}, []byte(" ")); string(got) != "bom --json" {
 					t.Fatalf("unexpected core invocation args: %#v", invocation.Args)
 				}
-				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-core","version":"0.9.5"}}`), nil
+				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-core","version":"0.9.6"}}`), nil
 			case filepath.Join(infraDir, "productive-k3s-infra.sh"):
 				if got := bytes.Join([][]byte{[]byte(invocation.Args[0]), []byte(invocation.Args[1])}, []byte(" ")); string(got) != "bom --json" {
 					t.Fatalf("unexpected infra invocation args: %#v", invocation.Args)
 				}
-				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-infra","version":"0.9.64-0.9.5"}}`), nil
+				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-infra","version":"0.9.65-0.9.6"}}`), nil
 			default:
 				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
 				return nil, nil
@@ -171,12 +171,12 @@ func TestRunBOMJSONIncludesRecursiveBundleDetail(t *testing.T) {
 	}
 	core, _ := bundles["core"].(map[string]any)
 	coreCLI, _ := core["cli"].(map[string]any)
-	if coreCLI["version"] != "0.9.5" {
+	if coreCLI["version"] != "0.9.6" {
 		t.Fatalf("unexpected core version: %#v", coreCLI["version"])
 	}
 	infra, _ := bundles["infra"].(map[string]any)
 	infraCLI, _ := infra["cli"].(map[string]any)
-	if infraCLI["version"] != "0.9.64-0.9.5" {
+	if infraCLI["version"] != "0.9.65-0.9.6" {
 		t.Fatalf("unexpected infra version: %#v", infraCLI["version"])
 	}
 	catalog, _ := bom["catalog"].(map[string]any)
@@ -246,12 +246,12 @@ func TestRunBOMJSONFallsBackToBundleInfoWhenBundleBOMIsUnavailable(t *testing.T)
 				if len(invocation.Args) >= 2 && invocation.Args[0] == "bom" {
 					return nil, errors.New("exit status 2")
 				}
-				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-core","bundle_type":"productive-k3s-core","bundle_version":"0.9.5","cli_entrypoint":"productive-k3s-core.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
+				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-core","bundle_type":"productive-k3s-core","bundle_version":"0.9.6","cli_entrypoint":"productive-k3s-core.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
 			case filepath.Join(infraDir, "productive-k3s-infra.sh"):
 				if len(invocation.Args) >= 2 && invocation.Args[0] == "bom" {
 					return nil, errors.New("exit status 2")
 				}
-				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-infra","bundle_type":"productive-k3s-infra","bundle_version":"0.9.64-0.9.5","cli_entrypoint":"productive-k3s-infra.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
+				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-infra","bundle_type":"productive-k3s-infra","bundle_version":"0.9.65-0.9.6","cli_entrypoint":"productive-k3s-infra.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
 			default:
 				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
 				return nil, nil
@@ -273,7 +273,7 @@ func TestRunBOMJSONFallsBackToBundleInfoWhenBundleBOMIsUnavailable(t *testing.T)
 		t.Fatalf("unexpected fallback core cli name: %#v", coreCLI["name"])
 	}
 	coreBundle, _ := core["bundle"].(map[string]any)
-	if coreBundle["bundle_version"] != "0.9.5" {
+	if coreBundle["bundle_version"] != "0.9.6" {
 		t.Fatalf("unexpected fallback core bundle version: %#v", coreBundle["bundle_version"])
 	}
 }
