@@ -23,4 +23,13 @@ grep -F 'run: make test-live-gha-onprem-remote' "${workflow_file}" >/dev/null
 grep -F 'path: |' "${workflow_file}" >/dev/null
 grep -F 'productive-k3s-cli/test-artifacts' "${workflow_file}" >/dev/null
 
-write_result "${ARTIFACT}" "ci-workflow-contract" "passed" "CI workflow uses bash explicitly, validates Go tests before CLI contracts, and includes the GitHub-host remote live validator." "${started_at}" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+release_workflow="${ROOT_DIR}/.github/workflows/release.yml"
+grep -F "tags:" "${release_workflow}" >/dev/null
+grep -F 'git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"' "${release_workflow}" >/dev/null
+grep -E 'uses:[[:space:]]+actions/setup-go@[0-9a-f]{40}[[:space:]]+# actions/setup-go@v5' "${release_workflow}" >/dev/null
+grep -F 'run: |' "${release_workflow}" >/dev/null
+grep -F 'make build-release' "${release_workflow}" >/dev/null
+grep -F 'sha256sum pk3s-${GITHUB_REF_NAME}-* > checksums.txt' "${release_workflow}" >/dev/null
+grep -F 'gh release create "${GITHUB_REF_NAME}"' "${release_workflow}" >/dev/null
+
+write_result "${ARTIFACT}" "ci-workflow-contract" "passed" "CI validates contracts and remote live behavior; release tags on main publish checksum-backed multiplatform archives." "${started_at}" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"

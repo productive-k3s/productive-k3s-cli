@@ -7,3 +7,7 @@ The CLI repository follows the same broad automation split as the other Producti
 - Release tags produce versioned CLI archives and installer assets.
 
 The documentation site is published with a dedicated workflow and keeps `cli.productive-k3s.io` pinned through the workflow `cname` setting and the tracked `docs/src/CNAME` file.
+
+Semantic release tags whose commit is already part of `main` build Linux,
+macOS, and Windows CLI archives. The release workflow publishes those archives
+with one `checksums.txt` file in the matching GitHub release.
