@@ -41,6 +41,31 @@ func TestRepositoryAndURLDefaults(t *testing.T) {
 	}
 }
 
+func TestCatalogSHA256Default(t *testing.T) {
+	t.Run("release fallback", func(t *testing.T) {
+		if err := os.Unsetenv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT"); err != nil {
+			t.Fatal(err)
+		}
+		if got := CatalogSHA256Default(); got != "0e19b5abc132f8fbaabe32f09da8b18fb2c556ce0a4f1b88ad4bb7d1852906b7" {
+			t.Fatalf("unexpected release catalog digest: %q", got)
+		}
+	})
+
+	t.Run("explicit override", func(t *testing.T) {
+		t.Setenv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT", "  custom-digest  ")
+		if got := CatalogSHA256Default(); got != "custom-digest" {
+			t.Fatalf("unexpected catalog digest override: %q", got)
+		}
+	})
+
+	t.Run("explicit development opt out", func(t *testing.T) {
+		t.Setenv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT", "")
+		if got := CatalogSHA256Default(); got != "" {
+			t.Fatalf("expected empty catalog digest override, got %q", got)
+		}
+	})
+}
+
 func TestLocalBundleEnvironmentAndRemoteDefaults(t *testing.T) {
 	for _, kind := range []string{"core", "infra"} {
 		dirVar, urlVar, refVar, err := localBundleEnvNames(kind)
