@@ -78,7 +78,7 @@ func TestRunVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	if got := stdout.String(); got != "0.9.65\n" {
+	if got := stdout.String(); got != "0.9.66\n" {
 		t.Fatalf("unexpected version output: %q", got)
 	}
 	if stderr.Len() != 0 {
@@ -824,6 +824,9 @@ func TestRunPlanTelemetryOverridePropagatesCorrelationAndSendsCliEvents(t *testi
 		Exec: func(_ context.Context, invocation Invocation) error {
 			got = invocation
 			return nil
+		},
+		LookPath: func(command string) (string, error) {
+			return "/test-bin/" + command, nil
 		},
 	})
 
