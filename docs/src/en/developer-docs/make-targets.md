@@ -13,6 +13,7 @@ make build
 make build-release
 make go-test
 make test-local-all
+make test-pre-push
 make test-live-remote
 make test-live-catalog
 make test-clean-all
@@ -21,6 +22,11 @@ make docs-serve
 make set-bundles-versions CORE_VERSION=0.9.1 INFRA_VERSION=0.9.41-0.9.1
 make tag-release VERSION=1.0.1
 ```
+
+`make test-pre-push` is the required non-live gate before committing or
+pushing CLI changes. It runs the exact `test-local-all` stage used by isolated
+validation, followed by coverage, lint, format, and spelling checks. Focused
+tests are useful while iterating, but do not replace this gate.
 
 Detailed targets live under `tests/` and `docs/`:
 

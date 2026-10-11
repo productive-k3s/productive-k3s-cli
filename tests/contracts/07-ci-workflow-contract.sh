@@ -10,12 +10,20 @@ started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 make_recipe="$(cd "${ROOT_DIR}" && make -n test-cli-contract)"
 printf '%s\n' "${make_recipe}" | grep -F 'bash ./tests/run-cli-contracts.sh' >/dev/null
 
+pre_push_recipe="$(cd "${ROOT_DIR}" && make -n test-pre-push)"
+printf '%s\n' "${pre_push_recipe}" | grep -F 'test-local-all' >/dev/null
+printf '%s\n' "${pre_push_recipe}" | grep -F 'run-coverage.sh' >/dev/null
+printf '%s\n' "${pre_push_recipe}" | grep -F 'run-lint.sh' >/dev/null
+printf '%s\n' "${pre_push_recipe}" | grep -F 'run-format-check.sh' >/dev/null
+printf '%s\n' "${pre_push_recipe}" | grep -F 'run-spellcheck.sh' >/dev/null
+
 workflow_file="${ROOT_DIR}/.github/workflows/cli-contracts.yml"
 grep -F 'name: Run Go tests' "${workflow_file}" >/dev/null
 grep -F 'name: Set up Go' "${workflow_file}" >/dev/null
 grep -E 'uses:[[:space:]]+actions/setup-go@[0-9a-f]{40}[[:space:]]+# actions/setup-go@v5' "${workflow_file}" >/dev/null
 grep -F 'go-version-file: productive-k3s-cli/go.mod' "${workflow_file}" >/dev/null
 grep -F 'shell: bash' "${workflow_file}" >/dev/null
+grep -F 'make test-pre-push' "${workflow_file}" >/dev/null
 grep -F 'run: make go-test' "${workflow_file}" >/dev/null
 grep -F 'run: make test-cli-contract' "${workflow_file}" >/dev/null
 grep -F 'live-onprem-remote-github-host' "${workflow_file}" >/dev/null
