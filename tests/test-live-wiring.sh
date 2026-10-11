@@ -61,6 +61,11 @@ assert_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'cp "${canonical_p
 assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'PK3S_INFRA_PROFILE_NAME=pk3s-cli-onprem-remote'
 assert_not_contains "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" 'PK3S_INFRA_SCENARIO=on-prem'
 
+ansible_check_line="$(grep -nF 'need_cmd ansible-playbook' "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" | cut -d: -f1)"
+first_launch_line="$(grep -nF 'launch_instance "${SERVER_NAME}"' "${ROOT_DIR}/tests/live-cli-onprem-remote.sh" | cut -d: -f1)"
+[[ -n "${ansible_check_line}" && -n "${first_launch_line}" && "${ansible_check_line}" -lt "${first_launch_line}" ]] \
+  || fail "onprem live validation must require ansible-playbook before launching VMs"
+
 assert_executable "${ROOT_DIR}/tests/run-cli-live.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh"
 assert_executable "${ROOT_DIR}/tests/live-cli-multipass-remote.sh"

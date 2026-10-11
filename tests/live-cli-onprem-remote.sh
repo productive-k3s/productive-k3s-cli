@@ -307,6 +307,8 @@ cleanup() {
   rm -rf "${WORK_DIR}"
 }
 
+trap cleanup EXIT
+need_cmd ansible-playbook
 need_cmd multipass
 need_cmd jq
 need_cmd ssh
@@ -316,7 +318,6 @@ need_cmd python3
 need_cmd git
 [[ -x "${PK3S_BIN}" ]] || fail "pk3s binary is not executable: ${PK3S_BIN}"
 pick_ssh_key
-trap cleanup EXIT
 
 write_cloud_init "${WORK_DIR}/server.yaml"
 write_cloud_init "${WORK_DIR}/agent.yaml"
