@@ -32,7 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Version = "0.9.65"
+var Version = "0.9.66"
 
 type Dependencies struct {
 	Stdout     io.Writer
@@ -45,6 +45,7 @@ type Dependencies struct {
 	Exec       func(context.Context, Invocation) error
 	RunOutput  func(context.Context, Invocation) ([]byte, error)
 	RunTUI     func(context.Context, Dependencies) int
+	LookPath   func(string) (string, error)
 }
 
 type Invocation struct {
@@ -68,6 +69,7 @@ func DefaultDependencies() Dependencies {
 		Exec:       osExec,
 		RunOutput:  osExecOutput,
 		RunTUI:     runTUI,
+		LookPath:   exec.LookPath,
 	}
 }
 
@@ -102,6 +104,9 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 	}
 	if deps.RunTUI == nil {
 		deps.RunTUI = runTUI
+	}
+	if deps.LookPath == nil {
+		deps.LookPath = exec.LookPath
 	}
 
 	if len(args) == 0 {
@@ -767,6 +772,9 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 				fmt.Fprintln(deps.Stderr, err.Error())
 				return 2
 			}
+			if code := packagedProfileRuntimePreflight(resolved, deps); code != 0 {
+				return code
+			}
 			code := delegate(ctx, deps, "infra", false, []string{"profile", "install", "--tgz", resolved}, env, maybeCLITelemetryContext("profile-install", "infra", false, deps, telemetryOverride))
 			return maybeAutoRegisterProfileCluster(ctx, deps, catalogEntryDisplayName(entry), "profile-install", code)
 		}
@@ -776,6 +784,9 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 			return 2
 		}
 		if code != 0 {
+			return code
+		}
+		if code := packagedProfileRuntimePreflight(tgz, deps); code != 0 {
 			return code
 		}
 		return delegate(ctx, deps, "infra", false, []string{"profile", "install", "--tgz", tgz}, env, maybeCLITelemetryContext("profile-install", "infra", false, deps, telemetryOverride))
@@ -840,6 +851,11 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 				fmt.Fprintln(deps.Stderr, err.Error())
 				return 2
 			}
+			if args[0] != "export" {
+				if code := packagedProfileRuntimePreflight(resolved, deps); code != 0 {
+					return code
+				}
+			}
 			delegatedArgs := []string{"profile", args[0], "--tgz", resolved}
 			if args[0] == "export" {
 				delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
@@ -857,6 +873,11 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 		}
 		if code != 0 {
 			return code
+		}
+		if args[0] != "export" {
+			if code := packagedProfileRuntimePreflight(tgz, deps); code != 0 {
+				return code
+			}
 		}
 		delegatedArgs := []string{"profile", args[0], "--tgz", tgz}
 		if args[0] == "export" {
@@ -1157,6 +1178,9 @@ func parsePackageEnvFile(args []string, stderr io.Writer) ([]string, map[string]
 func runInfraProfileCommand(ctx context.Context, command string, args []string, deps Dependencies, telemetryOverride *bool) int {
 	profile, code := resolveProfileArg(args, deps)
 	if code != 0 {
+		return code
+	}
+	if code := profileEnvRuntimePreflight(profile, deps); code != 0 {
 		return code
 	}
 	return delegate(ctx, deps, "infra", false, []string{command, "--profile", profile}, nil, maybeCLITelemetryContext(command, "infra", true, deps, telemetryOverride))
@@ -1797,6 +1821,7 @@ Notes:
   Public profile package workflows are package-oriented and delegate to the Infra runtime.
   The embedded profile.env inside the tgz is treated as base/defaults.
   Catalog-backed profiles may declare local-override inputs; pk3s will require --env-file before runtime for those entries.
+  Runtime execution checks packaged engine/scenario requirements before delegating to Infra.
   Use --env-file for installation-specific values, especially for cloud and on-prem profiles.
   Catalog-backed installs automatically register the cluster when Infra writes a profile state file.
 `,
@@ -1815,6 +1840,7 @@ Notes:
   Public Infra installation is package-oriented and delegates to Productive K3S Infra.
   The embedded profile.env inside the tgz is treated as base/defaults.
   Catalog-backed profiles may declare local-override inputs; pk3s will require --env-file before runtime for those entries.
+  Runtime execution checks packaged engine/scenario requirements before delegating to Infra.
   Use --env-file for installation-specific values, especially for cloud and on-prem profiles.
   Catalog-backed install/apply operations automatically register the cluster when Infra writes a profile state file.
 `,

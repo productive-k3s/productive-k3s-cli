@@ -81,6 +81,13 @@ The embedded `profile.env` inside a distributed `profile.tgz` is treated as a ba
 
 When the catalog declares that a profile requires local overrides, `pk3s` now fails early before runtime if `--env-file` is missing. Use `pk3s profile show <name>` to inspect the install inputs summary exposed by the catalog.
 
+Before executing a Profile, `pk3s` inspects its packaged runtime metadata and
+checks the required local commands. Environments that intentionally cannot run
+a scenario can set `PK3S_RUNTIME_DISABLED_SCENARIOS` to a comma-separated list,
+for example `multipass` inside a container without access to the host
+Multipass daemon. Validation and export remain available because they do not
+execute the Profile runtime.
+
 `pk3s` only prepares command-level telemetry for mutating workflows such as `install`, `profile install`, `infra install`, `infra apply`, `infra destroy`, `apply`, `destroy`, `addon install`, and `stack install`. Read-only commands such as `help`, `version`, `bom --json`, `bundle info --json`, `profile list`, `profile show`, `profile validate`, `infra plan`, `infra status`, `addon list`, `addon show`, `addon validate`, `stack list`, and `stack show` do not prompt for telemetry or emit command-level events.
 
 For add-ons, `--public-host` is intentionally narrow. It only covers the basic Core-managed ingress case for add-ons that declare that support in metadata. Richer ingress behavior remains an add-on concern rather than a generic `pk3s` or Core feature.

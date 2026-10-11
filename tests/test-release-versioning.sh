@@ -24,7 +24,8 @@ set -a
 source "${CONFIG}"
 set +a
 
-assert_eq "${PK3S_CLI_VERSION_DEFAULT}" "0.9.65" "default cli version"
+assert_eq "${PK3S_CLI_VERSION_DEFAULT}" "0.9.66" "default cli version"
+assert_eq "$(bash scripts/build-cli.sh version)" "0.9.66" "resolved development build version"
 assert_eq "${PRODUCTIVE_K3S_GITHUB_OWNER_DEFAULT}" "productive-k3s" "default github owner"
 assert_eq "${PRODUCTIVE_K3S_GITHUB_BASE_URL_DEFAULT}" "https://github.com/productive-k3s" "default github base url"
 assert_eq "${PRODUCTIVE_K3S_GITHUB_RAW_BASE_URL_DEFAULT}" "https://raw.githubusercontent.com/productive-k3s" "default github raw base url"

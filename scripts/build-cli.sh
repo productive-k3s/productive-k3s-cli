@@ -18,6 +18,7 @@ Usage:
 Commands:
   build-local
   build-release
+  version
 EOF
 }
 
@@ -28,14 +29,13 @@ need_cmd() {
   }
 }
 
-need_cmd "$GO_BIN"
-
 resolve_version() {
   if [[ -n "${PK3S_CLI_VERSION:-}" ]]; then
     printf '%s\n' "${PK3S_CLI_VERSION}"
     return
   fi
-  if version="$(git -C "${REPO_DIR}" describe --tags --exact-match 2>/dev/null)"; then
+  if [[ -z "$(git -C "${REPO_DIR}" status --porcelain --untracked-files=normal)" ]] \
+    && version="$(git -C "${REPO_DIR}" describe --tags --exact-match 2>/dev/null)"; then
     printf '%s\n' "${version}"
     return
   fi
@@ -58,6 +58,7 @@ go_build() {
 }
 
 build_local() {
+	need_cmd "$GO_BIN"
   go_build "${REPO_DIR}/${BIN_NAME}" .
 }
 
@@ -90,6 +91,7 @@ archive_for() {
 }
 
 build_release() {
+	need_cmd "$GO_BIN"
   need_cmd tar
   need_cmd zip
   rm -rf "${DIST_DIR}"
@@ -112,6 +114,9 @@ case "$1" in
     ;;
   build-release)
     build_release
+    ;;
+  version)
+    printf '%s\n' "${VERSION}"
     ;;
   -h|--help|help)
     usage

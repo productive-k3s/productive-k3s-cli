@@ -50,6 +50,13 @@ pk3s status --profile profiles/multipass/1-server-2-agents.env
 - `pk3s profile validate` valida sólo el contrato del profile.
 - `pk3s validate --profile ...` ejecuta la validación del escenario de Infra y puede requerir estado generado del deployment.
 
+Los comandos que ejecutan un Profile inspeccionan su metadata de runtime antes
+de delegar en Infra. El CLI se detiene con una lista concreta cuando no están
+disponibles comandos como `tofu`, `ansible-playbook` o `multipass`. Un runtime
+restringido también puede definir `PK3S_RUNTIME_DISABLED_SCENARIOS` con una
+lista de escenarios separada por comas. Console usa esta política para rechazar
+la ejecución local de Multipass antes de iniciar una operación.
+
 ## Qué resuelve hoy el modo remoto
 
 La base remota actual es:

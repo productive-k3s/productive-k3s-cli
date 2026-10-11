@@ -3,7 +3,7 @@ kind: MaterialsLock
 metadata:
   owner: productive-k3s-cli
   package: pk3s
-  version: 0.9.65
+  version: 0.9.66
 spec:
   materials:
     - {id: go, type: binary, name: go, version: 1.24.2, source: "https://go.dev", pinPolicy: exact-toolchain, required: true}
