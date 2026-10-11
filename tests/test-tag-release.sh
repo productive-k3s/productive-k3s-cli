@@ -39,6 +39,8 @@ if git -C "${ROOT_DIR}" rev-parse --git-dir >/dev/null 2>&1; then
 else
   cp -a "${ROOT_DIR}/." "${WORKTREE}"
 fi
+git -C "${WORKTREE}" config user.name "Productive K3S Test"
+git -C "${WORKTREE}" config user.email "test@productive-k3s.invalid"
 git init --bare "${CORE_REMOTE}" >/dev/null
 git init --bare "${INFRA_REMOTE}" >/dev/null
 git -C "${WORKTREE}" tag -d "${TAG_NAME}" >/dev/null 2>&1 || true

@@ -65,11 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          make test-unit
-          make test-coverage
-          make test-lint
-          make test-format
-          make test-spell
+          make test-pre-push
 
   static-and-contract:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false }}

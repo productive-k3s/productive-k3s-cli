@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -163,37 +164,41 @@ func TestOSExecOutputCapturesCommandOutput(t *testing.T) {
 }
 
 func TestRunEventedInvocationSeparatesEventsAndLogs(t *testing.T) {
-	dir := t.TempDir()
-	script := filepath.Join(dir, "productive-k3s-core.sh")
-	body := `#!/bin/sh
+	for attempt := 1; attempt <= 25; attempt++ {
+		t.Run(fmt.Sprintf("attempt-%02d", attempt), func(t *testing.T) {
+			dir := t.TempDir()
+			script := filepath.Join(dir, "productive-k3s-core.sh")
+			body := `#!/bin/sh
 printf '%s\n' '{"schema_version":"productive-k3s-operation-event/v1","component":"core","operation":"addon.install","step":"operation.started","status":"running","message":"Started"}'
 printf '%s\n' 'human output'
 printf '%s\n' 'human error' >&2
 `
-	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	var stdout, stderr bytes.Buffer
-	var eventSteps, logs []string
-	err := runEventedInvocation(
-		context.Background(),
-		Invocation{Path: script, Args: []string{"status"}},
-		func(event tui.OperationEvent) { eventSteps = append(eventSteps, event.Step) },
-		func(line string) { logs = append(logs, line) },
-		&stdout,
-		&stderr,
-	)
-	if err != nil {
-		t.Fatalf("evented invocation failed: %v", err)
-	}
-	if strings.Join(eventSteps, ",") != "operation.started" {
-		t.Fatalf("unexpected events: %#v", eventSteps)
-	}
-	if stdout.String() != "human output\n" || !strings.Contains(stderr.String(), "human error") {
-		t.Fatalf("unexpected stdout=%q stderr=%q", stdout.String(), stderr.String())
-	}
-	if !strings.Contains(strings.Join(logs, ","), "human output") || !strings.Contains(strings.Join(logs, ","), "human error") {
-		t.Fatalf("unexpected logs: %#v", logs)
+			if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr bytes.Buffer
+			var eventSteps, logs []string
+			err := runEventedInvocation(
+				context.Background(),
+				Invocation{Path: script, Args: []string{"status"}},
+				func(event tui.OperationEvent) { eventSteps = append(eventSteps, event.Step) },
+				func(line string) { logs = append(logs, line) },
+				&stdout,
+				&stderr,
+			)
+			if err != nil {
+				t.Fatalf("evented invocation failed: %v", err)
+			}
+			if strings.Join(eventSteps, ",") != "operation.started" {
+				t.Fatalf("unexpected events: %#v", eventSteps)
+			}
+			if stdout.String() != "human output\n" || stderr.String() != "human error\n" {
+				t.Fatalf("unexpected stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+			if !strings.Contains(strings.Join(logs, ","), "human output") || !strings.Contains(strings.Join(logs, ","), "human error") {
+				t.Fatalf("unexpected logs: %#v", logs)
+			}
+		})
 	}
 }
 

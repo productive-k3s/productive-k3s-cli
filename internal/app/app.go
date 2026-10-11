@@ -32,7 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Version = "0.9.66"
+var Version = "0.9.67"
 
 type Dependencies struct {
 	Stdout     io.Writer
@@ -1672,6 +1672,24 @@ func runEventedInvocation(ctx context.Context, invocation Invocation, eventSink 
 	}
 
 	var wg sync.WaitGroup
+	var stderrMu sync.Mutex
+	var logSinkMu sync.Mutex
+	writeStderr := func(line string) {
+		if stderr == nil {
+			return
+		}
+		stderrMu.Lock()
+		defer stderrMu.Unlock()
+		fmt.Fprintln(stderr, line)
+	}
+	writeLog := func(line string) {
+		if logSink == nil {
+			return
+		}
+		logSinkMu.Lock()
+		defer logSinkMu.Unlock()
+		logSink(line)
+	}
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
@@ -1688,18 +1706,12 @@ func runEventedInvocation(ctx context.Context, invocation Invocation, eventSink 
 			if stdout != nil {
 				fmt.Fprintln(stdout, line)
 			}
-			if logSink != nil {
-				logSink(line)
-			}
+			writeLog(line)
 		}
 		if err := scanner.Err(); err != nil {
 			line := fmt.Sprintf("warning: failed to read operation event stream: %v", err)
-			if stderr != nil {
-				fmt.Fprintln(stderr, line)
-			}
-			if logSink != nil {
-				logSink(line)
-			}
+			writeStderr(line)
+			writeLog(line)
 		}
 	}()
 	go func() {
@@ -1708,27 +1720,18 @@ func runEventedInvocation(ctx context.Context, invocation Invocation, eventSink 
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 		for scanner.Scan() {
 			line := scanner.Text()
-			if stderr != nil {
-				fmt.Fprintln(stderr, line)
-			}
-			if logSink != nil {
-				logSink(line)
-			}
+			writeStderr(line)
+			writeLog(line)
 		}
 		if err := scanner.Err(); err != nil {
 			line := fmt.Sprintf("warning: failed to read operation logs: %v", err)
-			if stderr != nil {
-				fmt.Fprintln(stderr, line)
-			}
-			if logSink != nil {
-				logSink(line)
-			}
+			writeStderr(line)
+			writeLog(line)
 		}
 	}()
 
-	waitErr := cmd.Wait()
 	wg.Wait()
-	return waitErr
+	return cmd.Wait()
 }
 
 func osExecOutput(ctx context.Context, invocation Invocation) ([]byte, error) {

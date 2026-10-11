@@ -7,10 +7,14 @@ else
 GO_BIN ?= go
 endif
 
-.PHONY: test-local-all test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-checkstatus test-logs-clean test-clean test-clean-all
+.PHONY: test-local-all test-pre-push test-unit test-lint test-format test-spell test-coverage test-static-raw docs-publish-check test-cli-contract test-live-remote test-live-catalog test-live-export test-live-gha-onprem-remote test-checkstatus test-logs-clean test-clean test-clean-all
 
 test-local-all:
 	GO_BIN="$(GO_BIN)" bash $(DEV_WRAPPER) test-local-all
+
+# This is the non-host-affecting gate required before commit and push. Keep the
+# isolated local stage as one indivisible check, then apply the quality gates.
+test-pre-push: test-local-all test-coverage test-lint test-format test-spell
 
 test-unit:
 	bash ./bin/run-go-tests.sh
