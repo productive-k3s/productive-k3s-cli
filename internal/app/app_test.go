@@ -825,6 +825,9 @@ func TestRunPlanTelemetryOverridePropagatesCorrelationAndSendsCliEvents(t *testi
 			got = invocation
 			return nil
 		},
+		LookPath: func(command string) (string, error) {
+			return "/test-bin/" + command, nil
+		},
 	})
 
 	if code != 0 {
