@@ -43,7 +43,7 @@ func TestViewsAndNavigationModes(t *testing.T) {
 	model.detail = "details"
 	model.activeCluster = "local"
 
-	for _, current := range []mode{modeCatalog, modeRunning, modeLogs, modeHelp} {
+	for _, current := range []mode{modeCatalog, modeRunning, modeLogs, modeHelp, modeAbout} {
 		model.mode = current
 		if view := model.View(); !strings.Contains(view, "Productive K3S") {
 			t.Fatalf("mode %v did not render frame: %q", current, view)

@@ -4,6 +4,13 @@ Esta página está pensada para copiar y pegar comandos. No reemplaza la especif
 
 ## General
 
+Abrir la interfaz de terminal y presionar `a` para ver About con la versión
+de PK3S en ejecución:
+
+```bash
+pk3s ui
+```
+
 Ver la versión del CLI:
 
 ```bash
@@ -35,6 +42,9 @@ Ver un profile y el resumen de inputs de instalación:
 ```bash
 pk3s profile show multipass-1-server-2-agents
 ```
+
+La lista marca como `unavailable` los Profiles que no pueden ejecutarse en el
+entorno actual; `profile show` informa la capacidad o comando faltante.
 
 Listar los addons publicados en el catálogo:
 

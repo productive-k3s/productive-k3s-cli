@@ -8,6 +8,36 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+func TestModelShowsAboutWithCompiledVersion(t *testing.T) {
+	model := NewModel(context.Background(), func(_ context.Context, args []string) CommandResult {
+		return CommandResult{Args: args}
+	}).WithVersion("1.2.3")
+
+	updated, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model = updated.(Model)
+	if model.mode != modeAbout {
+		t.Fatalf("expected about mode, got %v", model.mode)
+	}
+	view := model.View()
+	if !strings.Contains(view, "About") || !strings.Contains(view, "Version: 1.2.3") {
+		t.Fatalf("about view does not expose the CLI version: %q", view)
+	}
+
+	updated, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	if updated.(Model).mode != modeCatalog {
+		t.Fatal("expected the about shortcut to return to the catalog")
+	}
+}
+
+func TestModelAboutUsesDevelopmentVersionByDefault(t *testing.T) {
+	model := NewModel(context.Background(), func(_ context.Context, args []string) CommandResult {
+		return CommandResult{Args: args}
+	}).WithVersion("  ")
+	if !strings.Contains(aboutView(model.version), "Version: development") {
+		t.Fatalf("unexpected default about version: %q", model.version)
+	}
+}
+
 func TestParseCatalogList(t *testing.T) {
 	items := parseCatalogList("development\t0.1.0\tlocal\nproduction\t0.2.0\tcloud\tneeds-env\n")
 	if len(items) != 2 {
@@ -18,6 +48,26 @@ func TestParseCatalogList(t *testing.T) {
 	}
 	if items[1].Flags != "needs-env" {
 		t.Fatalf("unexpected flags: %#v", items[1])
+	}
+}
+
+func TestUnavailableProfileCannotStartInstall(t *testing.T) {
+	called := false
+	model := NewModel(context.Background(), func(_ context.Context, args []string) CommandResult {
+		called = true
+		return CommandResult{Args: args}
+	})
+	model.items[sectionProfiles] = []catalogItem{{Name: "multipass-demo", Flags: "needs-env unavailable"}}
+	updated, cmd := model.startInstall()
+	model = updated.(Model)
+	if cmd != nil || called {
+		t.Fatal("unavailable Profile must not start an install command")
+	}
+	if !strings.Contains(model.status, "unavailable") {
+		t.Fatalf("missing unavailable status: %q", model.status)
+	}
+	if detail := formatItemDetail(sectionProfiles, model.items[sectionProfiles][0]); strings.Contains(detail, "i Install") {
+		t.Fatalf("unavailable Profile detail must not offer install: %q", detail)
 	}
 }
 
