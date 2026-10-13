@@ -59,19 +59,21 @@ These commands delegate to Productive K3S Infra.
 - `pk3s profile validate` checks the profile contract only.
 - `pk3s validate --profile ...` runs the Infra scenario validation and may require generated deployment state.
 
-Commands that execute a Profile inspect its packaged runtime metadata before
-delegating to Infra. The CLI stops with a concrete list when commands such as
-`tofu`, `ansible-playbook`, or `multipass` are unavailable. A constrained
-runtime can also set `PK3S_RUNTIME_DISABLED_SCENARIOS` to a comma-separated
-scenario list. This is used by browser-hosted Console deployments to reject
-host-local Multipass execution before an operation starts.
+`profile list` and `profile show` evaluate catalog runtime metadata and expose
+whether a Profile is available in the current environment. Commands that
+execute a Profile repeat the check against its packaged metadata before
+delegating to Infra. The CLI reports missing commands such as `tofu`,
+`ansible-playbook`, or `multipass`. A constrained runtime can set
+`PK3S_RUNTIME_DISABLED_CAPABILITIES` to a comma-separated capability list such
+as `local-virtualization`; this lets browser-hosted deployments reject local VM
+provisioning without knowing specific Profile names.
 
 ## What remote mode resolves today
 
 The current remote baseline is:
 
 - Productive K3S Core `0.9.6`
-- Productive K3S Infra `0.9.65-0.9.6`
+- Productive K3S Infra `0.9.66-0.9.6`
 
 The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public command surfaces.
 

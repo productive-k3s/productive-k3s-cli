@@ -137,10 +137,10 @@ func TestResolveRemoteCoreBundleRejectsIncompleteRelease(t *testing.T) {
 }
 
 func TestResolveRemoteInfraBundleRejectsIncompleteRelease(t *testing.T) {
-	archiveName := "productive-k3s-infra-0.9.65-0.9.6.tar.gz"
+	archiveName := "productive-k3s-infra-0.9.66-0.9.6.tar.gz"
 	archiveBytes := buildTarGzFiles(t, map[string]string{
-		"productive-k3s-infra-0.9.65-0.9.6/productive-k3s-infra.sh": "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.65-0.9.6/scripts/release.env":     "PK3S_INFRA_RELEASE_TAG=0.9.65-0.9.6\n",
+		"productive-k3s-infra-0.9.66-0.9.6/productive-k3s-infra.sh": "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.66-0.9.6/scripts/release.env":     "PK3S_INFRA_RELEASE_TAG=0.9.66-0.9.6\n",
 	})
 	sum := sha256.Sum256(archiveBytes)
 	checksum := hex.EncodeToString(sum[:])
@@ -159,7 +159,7 @@ func TestResolveRemoteInfraBundleRejectsIncompleteRelease(t *testing.T) {
 
 	_, err := ResolveRemoteBundle(context.Background(), http.DefaultClient, t.TempDir(), RemoteSpec{
 		Kind:        "infra",
-		Version:     "0.9.65-0.9.6",
+		Version:     "0.9.66-0.9.6",
 		ArchiveName: archiveName,
 		ArchiveURL:  server.URL + "/" + archiveName,
 		ChecksumURL: server.URL + "/checksums.txt",
@@ -180,13 +180,13 @@ func TestResolveRemoteInfraBundleRejectsIncompleteRelease(t *testing.T) {
 }
 
 func TestResolveRemoteInfraBundleAcceptsCompleteRelease(t *testing.T) {
-	archiveName := "productive-k3s-infra-0.9.65-0.9.6.tar.gz"
+	archiveName := "productive-k3s-infra-0.9.66-0.9.6.tar.gz"
 	archiveBytes := buildTarGzFiles(t, map[string]string{
-		"productive-k3s-infra-0.9.65-0.9.6/productive-k3s-infra.sh":         "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.65-0.9.6/scripts/productive-k3s-infra.sh": "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.65-0.9.6/scripts/release.env":             "PK3S_INFRA_RELEASE_TAG=0.9.65-0.9.6\nPK3S_INFRA_RUNTIME_SURFACE=package-only\n",
-		"productive-k3s-infra-0.9.65-0.9.6/scripts/release-config.sh":       "#!/usr/bin/env bash\n",
-		"productive-k3s-infra-0.9.65-0.9.6/scripts/send-telemetry-event.sh": "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.66-0.9.6/productive-k3s-infra.sh":         "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.66-0.9.6/scripts/productive-k3s-infra.sh": "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.66-0.9.6/scripts/release.env":             "PK3S_INFRA_RELEASE_TAG=0.9.66-0.9.6\nPK3S_INFRA_RUNTIME_SURFACE=package-only\n",
+		"productive-k3s-infra-0.9.66-0.9.6/scripts/release-config.sh":       "#!/usr/bin/env bash\n",
+		"productive-k3s-infra-0.9.66-0.9.6/scripts/send-telemetry-event.sh": "#!/usr/bin/env bash\n",
 	})
 	sum := sha256.Sum256(archiveBytes)
 	checksum := hex.EncodeToString(sum[:])
@@ -205,7 +205,7 @@ func TestResolveRemoteInfraBundleAcceptsCompleteRelease(t *testing.T) {
 
 	ref, err := ResolveRemoteBundle(context.Background(), http.DefaultClient, t.TempDir(), RemoteSpec{
 		Kind:        "infra",
-		Version:     "0.9.65-0.9.6",
+		Version:     "0.9.66-0.9.6",
 		ArchiveName: archiveName,
 		ArchiveURL:  server.URL + "/" + archiveName,
 		ChecksumURL: server.URL + "/checksums.txt",
@@ -228,7 +228,7 @@ func TestReleaseManifestMatchesExpectedVersions(t *testing.T) {
 	if !bytes.Contains(raw, []byte(`"core_version":"0.9.6"`)) {
 		t.Fatalf("manifest missing core version: %s", raw)
 	}
-	if !bytes.Contains(raw, []byte(`"infra_version":"0.9.65-0.9.6"`)) {
+	if !bytes.Contains(raw, []byte(`"infra_version":"0.9.66-0.9.6"`)) {
 		t.Fatalf("manifest missing infra version: %s", raw)
 	}
 }

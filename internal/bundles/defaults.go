@@ -72,12 +72,12 @@ func MultipassProfileURLDefault() string {
 }
 
 func CatalogURLDefault() string {
-	return envOrDefault("PRODUCTIVE_K3S_CATALOG_URL_DEFAULT", "https://catalogs.productive-k3s.io/catalogs/0.9.65/index.yaml")
+	return envOrDefault("PRODUCTIVE_K3S_CATALOG_URL_DEFAULT", "https://catalogs.productive-k3s.io/catalogs/0.9.66/index.yaml")
 }
 
 func CatalogSHA256Default() string {
 	if value, ok := os.LookupEnv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT"); ok {
 		return strings.TrimSpace(value)
 	}
-	return "0e19b5abc132f8fbaabe32f09da8b18fb2c556ce0a4f1b88ad4bb7d1852906b7"
+	return "c792efb58db68aec37a2c23451045451ed17c64843dfbe268b00360d70f4057b"
 }

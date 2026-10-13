@@ -57,6 +57,7 @@ const (
 	modeRunning
 	modeLogs
 	modeHelp
+	modeAbout
 )
 
 type catalogItem struct {
@@ -107,6 +108,7 @@ type Model struct {
 	operationStarted string
 	operationEvents  chan tea.Msg
 	eventedOperation bool
+	version          string
 }
 
 func Run(ctx context.Context, stdout io.Writer, stderr io.Writer, runner CommandRunner) error {
@@ -143,11 +145,19 @@ func NewModelInteractive(ctx context.Context, runner CommandRunner, interactive 
 		loaded:      map[section]bool{},
 		logViewport: viewport.New(80, 20),
 		status:      "Loading catalog",
+		version:     "development",
 	}
 }
 
 func (m Model) WithStreamRunner(runner StreamCommandRunner) Model {
 	m.streamRunner = runner
+	return m
+}
+
+func (m Model) WithVersion(version string) Model {
+	if strings.TrimSpace(version) != "" {
+		m.version = strings.TrimSpace(version)
+	}
 	return m
 }
 
@@ -240,6 +250,13 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.mode = modeHelp
 		}
 		return m, nil
+	case "a":
+		if m.mode == modeAbout {
+			m.mode = modeCatalog
+		} else {
+			m.mode = modeAbout
+		}
+		return m, nil
 	case "esc":
 		m.mode = modeCatalog
 		return m, nil
@@ -311,6 +328,8 @@ func (m Model) View() string {
 		return m.frame("Logs", m.logsView())
 	case modeHelp:
 		return m.frame("Help", helpView())
+	case modeAbout:
+		return m.frame("About", aboutView(m.version))
 	default:
 		return m.frame(sectionTitle(m.section), m.catalogView())
 	}
@@ -484,6 +503,10 @@ func (m Model) startInstall() (tea.Model, tea.Cmd) {
 	}
 	switch m.section {
 	case sectionProfiles:
+		if itemUnavailable(item) {
+			m.status = "Profile " + item.Name + " is unavailable in this environment; see details"
+			return m, nil
+		}
 		return m.startCommandOperation("Installing profile "+item.Name, []string{"profile", "install", item.Name}, []string{
 			"Resolve catalog entry",
 			"Run profile install",
@@ -883,7 +906,11 @@ func formatItemDetail(sec section, item catalogItem) string {
 	b.WriteString("\nActions\n")
 	switch sec {
 	case sectionProfiles:
-		b.WriteString("  v Validate\n  i Install\n  e Export bootstrap artifact\n")
+		if itemUnavailable(item) {
+			b.WriteString("  v Validate\n  e Export bootstrap artifact\n")
+		} else {
+			b.WriteString("  v Validate\n  i Install\n  e Export bootstrap artifact\n")
+		}
 	case sectionAddons:
 		b.WriteString("  v Validate\n  i Install into active cluster\n  e Export bootstrap artifact\n")
 	case sectionStacks:
@@ -894,6 +921,15 @@ func formatItemDetail(sec section, item catalogItem) string {
 		b.WriteString("  No direct TUI action is currently exposed.\n")
 	}
 	return b.String()
+}
+
+func itemUnavailable(item catalogItem) bool {
+	for _, flag := range strings.Fields(item.Flags) {
+		if flag == "unavailable" {
+			return true
+		}
+	}
+	return false
 }
 
 func exportOutputPath(kind string, name string) string {
@@ -1000,6 +1036,7 @@ func helpView() string {
   t                 test selected cluster with kubectl
   K                 open K9s for selected cluster
   r                 refresh section
+  a                 show PK3S version and product information
   pgup/pgdn         scroll logs
   home/end          jump logs
   esc               back
@@ -1009,24 +1046,36 @@ Scope
   This TUI calls existing pk3s commands. It does not browse Kubernetes resources or replace K9s.`
 }
 
+func aboutView(version string) string {
+	return fmt.Sprintf(`Productive K3S
+
+PK3S CLI
+Version: %s
+
+The unified interface for provisioning and operating Productive K3S environments.`, version)
+}
+
 func footerText(current mode, sec section) string {
 	if current == modeLogs {
 		return "↑↓ Scroll   PgUp/PgDn Scroll   Home/End Jump   Esc Back   q Back   ? Help"
 	}
 	if current == modeHelp {
-		return "Esc Back   ? Back   q Back"
+		return "Esc Back   ? Back   a About   q Back"
+	}
+	if current == modeAbout {
+		return "Esc Back   a Back   ? Help   q Back"
 	}
 	switch sec {
 	case sectionProfiles:
-		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   a About   ? Help   q Quit"
 	case sectionAddons:
-		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   v Validate   i Install   e Export   r Refresh   a About   ? Help   q Quit"
 	case sectionStacks:
-		return "↑↓ Navigate   ←→ Section   Enter Details   i Install   e Export   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   i Install   e Export   r Refresh   a About   ? Help   q Quit"
 	case sectionClusters:
-		return "↑↓ Navigate   ←→ Section   Enter Details   s Target   t Test   K K9s   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   Enter Details   s Target   t Test   K K9s   r Refresh   a About   ? Help   q Quit"
 	default:
-		return "↑↓ Navigate   ←→ Section   r Refresh   ? Help   q Quit"
+		return "↑↓ Navigate   ←→ Section   r Refresh   a About   ? Help   q Quit"
 	}
 }
 

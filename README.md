@@ -50,6 +50,9 @@ pk3s help
 pk3s bom --json
 ```
 
+Launch the terminal UI with `pk3s ui`. Press `a` from the TUI to open About
+and inspect the exact PK3S CLI version running in the current session.
+
 Force remote bundle resolution:
 
 ```bash
@@ -81,11 +84,13 @@ The embedded `profile.env` inside a distributed `profile.tgz` is treated as a ba
 
 When the catalog declares that a profile requires local overrides, `pk3s` now fails early before runtime if `--env-file` is missing. Use `pk3s profile show <name>` to inspect the install inputs summary exposed by the catalog.
 
-Before executing a Profile, `pk3s` inspects its packaged runtime metadata and
-checks the required local commands. Environments that intentionally cannot run
-a scenario can set `PK3S_RUNTIME_DISABLED_SCENARIOS` to a comma-separated list,
-for example `multipass` inside a container without access to the host
-Multipass daemon. Validation and export remain available because they do not
+`pk3s profile list` and `pk3s profile show` evaluate the Profile runtime
+contract from the catalog and report Profiles that are unavailable in the
+current environment. Before execution, `pk3s` repeats that check against the
+packaged metadata and verifies every required command. Restricted runtimes can
+set `PK3S_RUNTIME_DISABLED_CAPABILITIES` to a comma-separated capability list,
+such as `local-virtualization`. The legacy scenario policy remains readable for
+older packages. Validation and export remain available because they do not
 execute the Profile runtime.
 
 `pk3s` only prepares command-level telemetry for mutating workflows such as `install`, `profile install`, `infra install`, `infra apply`, `infra destroy`, `apply`, `destroy`, `addon install`, and `stack install`. Read-only commands such as `help`, `version`, `bom --json`, `bundle info --json`, `profile list`, `profile show`, `profile validate`, `infra plan`, `infra status`, `addon list`, `addon show`, `addon validate`, `stack list`, and `stack show` do not prompt for telemetry or emit command-level events.
@@ -136,7 +141,7 @@ make test-live-catalog
 make test-live-export
 make test-clean-all
 make docs-build
-make set-bundles-versions CORE_VERSION=0.9.6 INFRA_VERSION=0.9.65-0.9.6
+make set-bundles-versions CORE_VERSION=0.9.6 INFRA_VERSION=0.9.66-0.9.6
 make tag-release VERSION=1.0.1
 ```
 

@@ -4,6 +4,13 @@ This page is meant to be copy-paste friendly. It is not the full CLI specificati
 
 ## General
 
+Launch the terminal UI and press `a` to open About with the running PK3S
+version:
+
+```bash
+pk3s ui
+```
+
 Check the CLI version:
 
 ```bash
@@ -35,6 +42,9 @@ Show one profile and its install inputs summary:
 ```bash
 pk3s profile show multipass-1-server-2-agents
 ```
+
+The list marks Profiles that cannot run in the current environment as
+`unavailable`; `profile show` prints the exact missing capability or command.
 
 List published addons from the catalog:
 

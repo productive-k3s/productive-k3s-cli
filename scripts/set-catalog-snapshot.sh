@@ -15,16 +15,17 @@ DIGEST="${2:-}"
 }
 
 URL="https://catalogs.productive-k3s.io/catalogs/${VERSION}/index.yaml"
-python3 - "${ROOT_DIR}/scripts/release-config.sh" "${ROOT_DIR}/internal/bundles/defaults.go" "${ROOT_DIR}/materials.lock.yaml" "${ROOT_DIR}/tests/test-release-versioning.sh" "${VERSION}" "${URL}" "${DIGEST}" <<'PY'
+python3 - "${ROOT_DIR}/scripts/release-config.sh" "${ROOT_DIR}/internal/bundles/defaults.go" "${ROOT_DIR}/internal/bundles/defaults_more_test.go" "${ROOT_DIR}/materials.lock.yaml" "${ROOT_DIR}/tests/test-release-versioning.sh" "${VERSION}" "${URL}" "${DIGEST}" <<'PY'
 import re
 import sys
 from pathlib import Path
 
 config_path = Path(sys.argv[1])
 defaults_path = Path(sys.argv[2])
-materials_path = Path(sys.argv[3])
-release_test_path = Path(sys.argv[4])
-version, url, digest = sys.argv[5:]
+defaults_test_path = Path(sys.argv[3])
+materials_path = Path(sys.argv[4])
+release_test_path = Path(sys.argv[5])
+version, url, digest = sys.argv[6:]
 
 config = config_path.read_text(encoding="utf-8")
 config = re.sub(
@@ -53,6 +54,16 @@ defaults, digest_count = re.subn(
 if url_count != 1 or digest_count != 1:
     raise SystemExit("expected exactly one compiled catalog URL and digest default")
 defaults_path.write_text(defaults, encoding="utf-8")
+
+defaults_test = defaults_test_path.read_text(encoding="utf-8")
+defaults_test, digest_count = re.subn(
+    r'if got := CatalogSHA256Default\(\); got != "[0-9a-f]{64}"',
+    f'if got := CatalogSHA256Default(); got != "{digest}"',
+    defaults_test,
+)
+if digest_count != 1:
+    raise SystemExit("expected exactly one compiled catalog digest assertion")
+defaults_test_path.write_text(defaults_test, encoding="utf-8")
 
 materials = materials_path.read_text(encoding="utf-8")
 replacement = (

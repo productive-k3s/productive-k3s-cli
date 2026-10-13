@@ -18,9 +18,17 @@ import (
 )
 
 type profileRuntimeRequirements struct {
-	Name     string
-	Scenario string
-	Engine   string
+	Name                 string
+	Scenario             string
+	Engine               string
+	ExecutionScope       string
+	RequiredCapabilities []string
+	RequiredCommands     []string
+}
+
+type profileRuntimeAvailability struct {
+	Available bool
+	Reasons   []string
 }
 
 func packagedProfileRuntimePreflight(tgzPath string, deps Dependencies) int {
@@ -87,15 +95,23 @@ func readPackagedProfileRuntime(tgzPath string) (profileRuntimeRequirements, boo
 				Engine struct {
 					Type string `yaml:"type"`
 				} `yaml:"engine"`
+				Runtime struct {
+					ExecutionScope       string   `yaml:"executionScope"`
+					RequiredCapabilities []string `yaml:"requiredCapabilities"`
+					RequiredCommands     []string `yaml:"requiredCommands"`
+				} `yaml:"runtime"`
 			} `yaml:"spec"`
 		}
 		if err := yaml.Unmarshal(body, &document); err != nil {
 			return profileRuntimeRequirements{}, false, nil
 		}
 		return profileRuntimeRequirements{
-			Name:     strings.TrimSpace(document.Metadata.Name),
-			Scenario: strings.ToLower(strings.TrimSpace(document.Spec.Scenario.Type)),
-			Engine:   strings.ToLower(strings.TrimSpace(document.Spec.Engine.Type)),
+			Name:                 strings.TrimSpace(document.Metadata.Name),
+			Scenario:             strings.ToLower(strings.TrimSpace(document.Spec.Scenario.Type)),
+			Engine:               strings.ToLower(strings.TrimSpace(document.Spec.Engine.Type)),
+			ExecutionScope:       strings.ToLower(strings.TrimSpace(document.Spec.Runtime.ExecutionScope)),
+			RequiredCapabilities: normalizedUniqueValues(document.Spec.Runtime.RequiredCapabilities),
+			RequiredCommands:     normalizedUniqueValues(document.Spec.Runtime.RequiredCommands),
 		}, true, nil
 	}
 }
@@ -121,12 +137,46 @@ func profileRuntimeFromEnv(body []byte) profileRuntimeRequirements {
 }
 
 func profileRuntimePreflight(requirements profileRuntimeRequirements, deps Dependencies) int {
+	availability := evaluateProfileRuntime(requirements, deps)
+	if availability.Available {
+		return 0
+	}
+	fmt.Fprintf(deps.Stderr, "profile %q cannot run in this environment: %s\n", profileRuntimeName(requirements), strings.Join(availability.Reasons, "; "))
+	return 2
+}
+
+func evaluateProfileRuntime(requirements profileRuntimeRequirements, deps Dependencies) profileRuntimeAvailability {
+	reasons := []string{}
 	disabled := commaSeparatedSet(os.Getenv("PK3S_RUNTIME_DISABLED_SCENARIOS"))
 	if disabled[requirements.Scenario] {
-		fmt.Fprintf(deps.Stderr, "profile %q cannot run in this environment: scenario %q is disabled by runtime policy\n", profileRuntimeName(requirements), requirements.Scenario)
-		return 2
+		reasons = append(reasons, fmt.Sprintf("scenario %q is disabled by runtime policy", requirements.Scenario))
 	}
 
+	disabledCapabilities := commaSeparatedSet(os.Getenv("PK3S_RUNTIME_DISABLED_CAPABILITIES"))
+	for _, capability := range normalizedUniqueValues(requirements.RequiredCapabilities) {
+		if disabledCapabilities[capability] {
+			reasons = append(reasons, fmt.Sprintf("capability %q is disabled by runtime policy", capability))
+		}
+	}
+
+	requiredCommands := normalizedUniqueValues(requirements.RequiredCommands)
+	if len(requiredCommands) == 0 {
+		requiredCommands = inferredProfileRuntimeCommands(requirements)
+	}
+
+	missing := make([]string, 0, len(requiredCommands))
+	for _, command := range requiredCommands {
+		if _, err := deps.LookPath(command); err != nil {
+			missing = append(missing, command)
+		}
+	}
+	if len(missing) > 0 {
+		reasons = append(reasons, fmt.Sprintf("missing required command(s): %s", strings.Join(missing, ", ")))
+	}
+	return profileRuntimeAvailability{Available: len(reasons) == 0, Reasons: reasons}
+}
+
+func inferredProfileRuntimeCommands(requirements profileRuntimeRequirements) []string {
 	requiredCommands := []string{}
 	switch requirements.Engine {
 	case "opentofu":
@@ -137,20 +187,18 @@ func profileRuntimePreflight(requirements profileRuntimeRequirements, deps Depen
 	if requirements.Scenario == "multipass" {
 		requiredCommands = append(requiredCommands, "curl", "multipass", "sha256sum", "ssh", "ssh-keygen", "tar", "timeout")
 	}
-	sort.Strings(requiredCommands)
-	requiredCommands = slices.Compact(requiredCommands)
+	return normalizedUniqueValues(requiredCommands)
+}
 
-	missing := make([]string, 0, len(requiredCommands))
-	for _, command := range requiredCommands {
-		if _, err := deps.LookPath(command); err != nil {
-			missing = append(missing, command)
+func normalizedUniqueValues(values []string) []string {
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.ToLower(strings.TrimSpace(value)); value != "" {
+			normalized = append(normalized, value)
 		}
 	}
-	if len(missing) == 0 {
-		return 0
-	}
-	fmt.Fprintf(deps.Stderr, "profile %q cannot run in this environment: missing required command(s): %s\n", profileRuntimeName(requirements), strings.Join(missing, ", "))
-	return 2
+	sort.Strings(normalized)
+	return slices.Compact(normalized)
 }
 
 func commaSeparatedSet(value string) map[string]bool {

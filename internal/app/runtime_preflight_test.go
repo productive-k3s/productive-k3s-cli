@@ -117,6 +117,88 @@ spec:
 	}
 }
 
+func TestPackagedProfileRuntimeUsesDeclaredRequirements(t *testing.T) {
+	t.Setenv("PK3S_RUNTIME_DISABLED_SCENARIOS", "")
+	t.Setenv("PK3S_RUNTIME_DISABLED_CAPABILITIES", "local-virtualization")
+	path := writeProfilePackage(t, `
+metadata:
+  name: local-demo
+spec:
+  scenario:
+    type: custom
+  engine:
+    type: shell
+  runtime:
+    executionScope: local-host
+    requiredCapabilities:
+      - local-virtualization
+    requiredCommands:
+      - custom-runner
+`)
+	stderr := &bytes.Buffer{}
+	code := packagedProfileRuntimePreflight(path, Dependencies{
+		Stderr: stderr,
+		LookPath: func(command string) (string, error) {
+			if command != "custom-runner" {
+				t.Fatalf("unexpected inferred command lookup: %s", command)
+			}
+			return "/bin/" + command, nil
+		},
+	})
+	if code != 2 || !strings.Contains(stderr.String(), `capability "local-virtualization" is disabled by runtime policy`) {
+		t.Fatalf("unexpected result: code=%d stderr=%q", code, stderr.String())
+	}
+}
+
+func TestCatalogProfileRuntimeAvailabilityAndRendering(t *testing.T) {
+	t.Setenv("PK3S_RUNTIME_DISABLED_CAPABILITIES", "")
+	entry := catalogEntry{
+		Kind: "profile",
+		Name: "multipass-demo",
+		Runtime: catalogProfileRuntime{
+			ExecutionScope:       "local-host",
+			RequiredCapabilities: []string{"local-virtualization"},
+			RequiredCommands:     []string{"multipass", "tofu"},
+		},
+	}
+	deps := Dependencies{
+		Stderr: &bytes.Buffer{},
+		LookPath: func(command string) (string, error) {
+			if command == "multipass" {
+				return "", errors.New("missing")
+			}
+			return "/bin/" + command, nil
+		},
+	}
+	if code := profileCatalogRuntimePreflight(entry, deps); code != 2 {
+		t.Fatalf("expected unavailable catalog Profile, got %d", code)
+	}
+	stdout := &bytes.Buffer{}
+	renderProfileCatalogEntry(stdout, entry, deps)
+	if got := stdout.String(); !strings.Contains(got, "Availability: unavailable") || !strings.Contains(got, "missing required command(s): multipass") {
+		t.Fatalf("unexpected Profile detail: %q", got)
+	}
+}
+
+func TestParseCatalogProfileRuntime(t *testing.T) {
+	entries := parseCatalogEntries([]byte(`
+entries:
+  - id: remote-demo
+    name: remote-demo
+    kind: profile
+    runtime:
+      executionScope: remote-host
+      requiredCapabilities: [remote-ssh]
+      requiredCommands: [ssh, ansible-playbook]
+`))
+	if len(entries) != 1 || entries[0].Runtime.ExecutionScope != "remote-host" {
+		t.Fatalf("unexpected parsed entries: %#v", entries)
+	}
+	if got := entries[0].profileRuntimeRequirements().RequiredCommands; len(got) != 2 || got[0] != "ansible-playbook" || got[1] != "ssh" {
+		t.Fatalf("unexpected normalized commands: %#v", got)
+	}
+}
+
 func TestProfileRuntimeFromEnv(t *testing.T) {
 	requirements := profileRuntimeFromEnv([]byte(`
 export PK3S_INFRA_PROFILE_NAME=demo

@@ -254,7 +254,9 @@ func runTUI(ctx context.Context, deps Dependencies) int {
 			return tui.InteractiveFinished(args, err)
 		})
 	}
-	model := tui.NewModelInteractive(ctx, runner, interactive).WithStreamRunner(streamRunner)
+	model := tui.NewModelInteractive(ctx, runner, interactive).
+		WithStreamRunner(streamRunner).
+		WithVersion(Version)
 	if err := tui.RunModel(deps.Stdout, model); err != nil {
 		fmt.Fprintf(deps.Stderr, "TUI failed: %v\n", err)
 		return 1
@@ -728,7 +730,7 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 			fmt.Fprintln(deps.Stderr, err.Error())
 			return 2
 		}
-		renderProfileCatalogEntry(deps.Stdout, entry)
+		renderProfileCatalogEntry(deps.Stdout, entry, deps)
 		return 0
 	case "validate":
 		if value, found := firstNonFlagArg(args[1:]); found && !contains(args[1:], "--tgz") && !contains(args[1:], "--profile") && !isHTTPAssetURL(value) && !statFile(value) && !looksLikeLocalTGZPath(value) {
@@ -765,6 +767,9 @@ func runProfile(ctx context.Context, args []string, deps Dependencies, telemetry
 				return 2
 			}
 			if exitCode := profileCatalogInstallPreflight(entry, env, deps.Stderr); exitCode != 0 {
+				return exitCode
+			}
+			if exitCode := profileCatalogRuntimePreflight(entry, deps); exitCode != 0 {
 				return exitCode
 			}
 			resolved, err := downloadCatalogEntryTGZ(ctx, deps, entry)
@@ -845,6 +850,11 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 			}
 			if exitCode := profileCatalogInstallPreflight(entry, env, deps.Stderr); exitCode != 0 {
 				return exitCode
+			}
+			if args[0] != "export" {
+				if exitCode := profileCatalogRuntimePreflight(entry, deps); exitCode != 0 {
+					return exitCode
+				}
 			}
 			resolved, err := downloadCatalogEntryTGZ(ctx, deps, entry)
 			if err != nil {
@@ -1077,8 +1087,15 @@ func runCatalogKindList(ctx context.Context, deps Dependencies, kind string, mar
 		if entry.Category != "" {
 			line += "\t" + entry.Category
 		}
+		flags := []string{}
 		if markProfileEnv && entry.Install.RequiresLocalOverrides {
-			line += "\tneeds-env"
+			flags = append(flags, "needs-env")
+		}
+		if markProfileEnv && entry.Runtime.declared() && !evaluateProfileRuntime(entry.profileRuntimeRequirements(), deps).Available {
+			flags = append(flags, "unavailable")
+		}
+		if len(flags) > 0 {
+			line += "\t" + strings.Join(flags, " ")
 		}
 		fmt.Fprintln(deps.Stdout, line)
 	}
@@ -2214,7 +2231,27 @@ type catalogEntry struct {
 	BOMEmbeddedPath string
 	SourceRevision  string
 	Compatibility   catalogCompatibility
+	Runtime         catalogProfileRuntime
 	Install         catalogInstallSummary
+}
+
+type catalogProfileRuntime struct {
+	ExecutionScope       string   `yaml:"executionScope"`
+	RequiredCapabilities []string `yaml:"requiredCapabilities"`
+	RequiredCommands     []string `yaml:"requiredCommands"`
+}
+
+func (runtime catalogProfileRuntime) declared() bool {
+	return strings.TrimSpace(runtime.ExecutionScope) != "" || len(runtime.RequiredCapabilities) > 0 || len(runtime.RequiredCommands) > 0
+}
+
+func (entry catalogEntry) profileRuntimeRequirements() profileRuntimeRequirements {
+	return profileRuntimeRequirements{
+		Name:                 catalogEntryDisplayName(entry),
+		ExecutionScope:       strings.ToLower(strings.TrimSpace(entry.Runtime.ExecutionScope)),
+		RequiredCapabilities: normalizedUniqueValues(entry.Runtime.RequiredCapabilities),
+		RequiredCommands:     normalizedUniqueValues(entry.Runtime.RequiredCommands),
+	}
 }
 
 type catalogCompatibility struct {
@@ -2237,15 +2274,16 @@ type catalogCompatibility struct {
 
 type catalogYAML struct {
 	Entries []struct {
-		Kind           string               `yaml:"kind"`
-		ID             string               `yaml:"id"`
-		Name           string               `yaml:"name"`
-		Category       string               `yaml:"category"`
-		Version        string               `yaml:"version"`
-		Description    string               `yaml:"description"`
-		Visibility     string               `yaml:"visibility"`
-		SourceRevision string               `yaml:"sourceRevision"`
-		Compatibility  catalogCompatibility `yaml:"compatibility"`
+		Kind           string                `yaml:"kind"`
+		ID             string                `yaml:"id"`
+		Name           string                `yaml:"name"`
+		Category       string                `yaml:"category"`
+		Version        string                `yaml:"version"`
+		Description    string                `yaml:"description"`
+		Visibility     string                `yaml:"visibility"`
+		SourceRevision string                `yaml:"sourceRevision"`
+		Compatibility  catalogCompatibility  `yaml:"compatibility"`
+		Runtime        catalogProfileRuntime `yaml:"runtime"`
 		Metadata       struct {
 			Name string `yaml:"name"`
 		} `yaml:"metadata"`
@@ -2777,6 +2815,13 @@ func profileCatalogInstallPreflight(entry catalogEntry, env map[string]string, s
 	return 2
 }
 
+func profileCatalogRuntimePreflight(entry catalogEntry, deps Dependencies) int {
+	if !entry.Runtime.declared() {
+		return 0
+	}
+	return profileRuntimePreflight(entry.profileRuntimeRequirements(), deps)
+}
+
 func catalogEntryDisplayName(entry catalogEntry) string {
 	for _, value := range []string{entry.Name, entry.ID, entry.MetadataName} {
 		if strings.TrimSpace(value) != "" {
@@ -2786,8 +2831,24 @@ func catalogEntryDisplayName(entry catalogEntry) string {
 	return "unknown"
 }
 
-func renderProfileCatalogEntry(w io.Writer, entry catalogEntry) {
+func renderProfileCatalogEntry(w io.Writer, entry catalogEntry, deps Dependencies) {
 	renderCatalogEntrySummary(w, entry)
+	if entry.Runtime.declared() {
+		availability := evaluateProfileRuntime(entry.profileRuntimeRequirements(), deps)
+		fmt.Fprintf(w, "Execution scope: %s\n", entry.Runtime.ExecutionScope)
+		fmt.Fprintf(w, "Required capabilities: %s\n", strings.Join(entry.Runtime.RequiredCapabilities, ", "))
+		fmt.Fprintf(w, "Required commands: %s\n", strings.Join(entry.Runtime.RequiredCommands, ", "))
+		if availability.Available {
+			fmt.Fprintln(w, "Availability: available")
+		} else {
+			fmt.Fprintln(w, "Availability: unavailable")
+			for _, reason := range availability.Reasons {
+				fmt.Fprintf(w, "  - %s\n", reason)
+			}
+		}
+	} else {
+		fmt.Fprintln(w, "Availability: unknown (catalog does not declare runtime requirements)")
+	}
 	fmt.Fprintf(w, "Requires local overrides: %t\n", entry.Install.RequiresLocalOverrides)
 	if len(entry.Install.Inputs) == 0 {
 		return
@@ -2875,7 +2936,7 @@ func parseCatalogEntries(body []byte) []catalogEntry {
 			Visibility: raw.Visibility, ArtifactType: raw.Artifact.Type,
 			ArtifactURL: raw.Artifact.URL, ArtifactSHA256: raw.Artifact.SHA256,
 			BOMURL: raw.BOM.URL, BOMSHA256: raw.BOM.SHA256, BOMEmbeddedPath: raw.BOM.EmbeddedPath,
-			SourceRevision: raw.SourceRevision, Compatibility: raw.Compatibility, Install: raw.Install,
+			SourceRevision: raw.SourceRevision, Compatibility: raw.Compatibility, Runtime: raw.Runtime, Install: raw.Install,
 		})
 	}
 	return entries
