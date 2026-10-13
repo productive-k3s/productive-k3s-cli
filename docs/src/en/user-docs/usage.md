@@ -73,7 +73,7 @@ provisioning without knowing specific Profile names.
 The current remote baseline is:
 
 - Productive K3S Core `0.9.6`
-- Productive K3S Infra `0.9.65-0.9.6`
+- Productive K3S Infra `0.9.66-0.9.6`
 
 The CLI downloads those release bundles from GitHub Releases, verifies their checksums, extracts them into the local cache, and then runs their public command surfaces.
 

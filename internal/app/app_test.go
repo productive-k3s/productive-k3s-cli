@@ -140,7 +140,7 @@ func TestRunBOMJSONIncludesRecursiveBundleDetail(t *testing.T) {
 				if got := bytes.Join([][]byte{[]byte(invocation.Args[0]), []byte(invocation.Args[1])}, []byte(" ")); string(got) != "bom --json" {
 					t.Fatalf("unexpected infra invocation args: %#v", invocation.Args)
 				}
-				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-infra","version":"0.9.65-0.9.6"}}`), nil
+				return []byte(`{"schema_version":"1","bom_type":"productive-k3s-cli-bom/v1","cli":{"name":"productive-k3s-infra","version":"0.9.66-0.9.6"}}`), nil
 			default:
 				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
 				return nil, nil
@@ -176,7 +176,7 @@ func TestRunBOMJSONIncludesRecursiveBundleDetail(t *testing.T) {
 	}
 	infra, _ := bundles["infra"].(map[string]any)
 	infraCLI, _ := infra["cli"].(map[string]any)
-	if infraCLI["version"] != "0.9.65-0.9.6" {
+	if infraCLI["version"] != "0.9.66-0.9.6" {
 		t.Fatalf("unexpected infra version: %#v", infraCLI["version"])
 	}
 	catalog, _ := bom["catalog"].(map[string]any)
@@ -251,7 +251,7 @@ func TestRunBOMJSONFallsBackToBundleInfoWhenBundleBOMIsUnavailable(t *testing.T)
 				if len(invocation.Args) >= 2 && invocation.Args[0] == "bom" {
 					return nil, errors.New("exit status 2")
 				}
-				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-infra","bundle_type":"productive-k3s-infra","bundle_version":"0.9.65-0.9.6","cli_entrypoint":"productive-k3s-infra.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
+				return []byte(`{"schema_version":"1","bundle_name":"productive-k3s-infra","bundle_type":"productive-k3s-infra","bundle_version":"0.9.66-0.9.6","cli_entrypoint":"productive-k3s-infra.sh","platform":"any","api_compatibility":{"contract":"productive-k3s-cli-bundle-info/v1"}}`), nil
 			default:
 				t.Fatalf("unexpected RunOutput path: %s", invocation.Path)
 				return nil, nil

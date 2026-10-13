@@ -46,7 +46,7 @@ func TestDefaultRemoteSpecAndBundleHelpers(t *testing.T) {
 	if infraSpec.ChecksumURL == "" || !strings.Contains(infraSpec.ChecksumURL, "checksums.txt") {
 		t.Fatalf("unexpected infra checksum url: %q", infraSpec.ChecksumURL)
 	}
-	if infraSpec.ArchiveName != "productive-k3s-infra-0.9.65-0.9.6.tar.gz" {
+	if infraSpec.ArchiveName != "productive-k3s-infra-0.9.66-0.9.6.tar.gz" {
 		t.Fatalf("unexpected infra archive name: %q", infraSpec.ArchiveName)
 	}
 

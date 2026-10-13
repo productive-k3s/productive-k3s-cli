@@ -141,7 +141,7 @@ make test-live-catalog
 make test-live-export
 make test-clean-all
 make docs-build
-make set-bundles-versions CORE_VERSION=0.9.6 INFRA_VERSION=0.9.65-0.9.6
+make set-bundles-versions CORE_VERSION=0.9.6 INFRA_VERSION=0.9.66-0.9.6
 make tag-release VERSION=1.0.1
 ```
 
