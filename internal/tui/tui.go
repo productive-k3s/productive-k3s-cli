@@ -60,6 +60,13 @@ const (
 	modeAbout
 )
 
+const (
+	sidebarMinWidth   = 28
+	sidebarMaxWidth   = 42
+	panelFrameWidth   = 6
+	sidebarPrefixSize = 4
+)
+
 type catalogItem struct {
 	Name     string
 	Version  string
@@ -371,7 +378,7 @@ func (m Model) catalogView() string {
 	if m.width < 72 {
 		return lipgloss.JoinVertical(lipgloss.Left, left, panelStyle.Width(max(20, m.width-2)).Render(right))
 	}
-	leftWidth := 28
+	leftWidth := m.sidebarWidth()
 	rightWidth := max(24, m.width-leftWidth-4)
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		panelStyle.Width(leftWidth).Render(left),
@@ -381,6 +388,7 @@ func (m Model) catalogView() string {
 
 func (m Model) sidebar() string {
 	var b strings.Builder
+	labelWidth := m.sidebarLabelWidth()
 	for _, sec := range []section{sectionProfiles, sectionStacks, sectionAddons, sectionClusters} {
 		prefix := "  "
 		if sec == m.section {
@@ -397,15 +405,47 @@ func (m Model) sidebar() string {
 				}
 			}
 			for i, item := range items {
-				row := "    " + item.Name
+				name := truncateLabel(item.Name, labelWidth)
+				row := "    " + name
 				if i == m.cursor {
-					row = selectedStyle.Render("  > " + item.Name)
+					row = selectedStyle.Render("  > " + name)
 				}
 				b.WriteString(row + "\n")
 			}
 		}
 	}
 	return b.String()
+}
+
+func (m Model) sidebarWidth() int {
+	width := sidebarMinWidth
+	for _, item := range m.currentItems() {
+		width = max(width, len([]rune(item.Name))+sidebarPrefixSize+panelFrameWidth)
+	}
+	width = min(width, sidebarMaxWidth)
+	if m.width >= 72 {
+		width = min(width, max(sidebarMinWidth, m.width-36))
+	}
+	return width
+}
+
+func (m Model) sidebarLabelWidth() int {
+	width := m.sidebarWidth() - sidebarPrefixSize
+	if m.width >= 72 {
+		width -= panelFrameWidth
+	}
+	return max(4, width)
+}
+
+func truncateLabel(value string, width int) string {
+	runes := []rune(value)
+	if len(runes) <= width {
+		return value
+	}
+	if width <= 3 {
+		return string(runes[:width])
+	}
+	return string(runes[:width-3]) + "..."
 }
 
 func (m Model) currentItems() []catalogItem {

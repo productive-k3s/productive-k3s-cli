@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 func TestModelShowsAboutWithCompiledVersion(t *testing.T) {
@@ -68,6 +69,45 @@ func TestUnavailableProfileCannotStartInstall(t *testing.T) {
 	}
 	if detail := formatItemDetail(sectionProfiles, model.items[sectionProfiles][0]); strings.Contains(detail, "i Install") {
 		t.Fatalf("unavailable Profile detail must not offer install: %q", detail)
+	}
+}
+
+func TestSidebarExpandsAndTruncatesLongCatalogNames(t *testing.T) {
+	model := NewModel(context.Background(), func(_ context.Context, args []string) CommandResult {
+		return CommandResult{Args: args}
+	})
+	model.width = 100
+	model.items[sectionProfiles] = []catalogItem{{Name: "multipass-1-server-2-agents"}}
+	if got := model.sidebarWidth(); got <= sidebarMinWidth {
+		t.Fatalf("expected sidebar to expand for a long profile name, got %d", got)
+	}
+	if view := model.sidebar(); !strings.Contains(view, "multipass-1-server-2-agents") {
+		t.Fatalf("expanded sidebar truncated a fitting profile name: %q", view)
+	}
+
+	model.width = 72
+	model.items[sectionProfiles] = []catalogItem{{Name: "profile-with-an-excessively-long-name-that-cannot-fit"}}
+	view := model.sidebar()
+	if !strings.Contains(view, "...") {
+		t.Fatalf("expected an ellipsis for an oversized profile name: %q", view)
+	}
+	if strings.Contains(view, "profile-with-an-excessively-long-name-that-cannot-fit") {
+		t.Fatalf("oversized profile name was not truncated: %q", view)
+	}
+	if got := lipgloss.Width(model.catalogView()); got > model.width {
+		t.Fatalf("catalog view exceeds terminal width: got %d, terminal %d", got, model.width)
+	}
+}
+
+func TestTruncateLabelHandlesNarrowAndUnicodeLabels(t *testing.T) {
+	if got := truncateLabel("abcdef", 3); got != "abc" {
+		t.Fatalf("unexpected narrow truncation: %q", got)
+	}
+	if got := truncateLabel("perfil-largo", 8); got != "perfi..." {
+		t.Fatalf("unexpected ellipsis truncation: %q", got)
+	}
+	if got := truncateLabel("nodo-remoto", 20); got != "nodo-remoto" {
+		t.Fatalf("fitting label changed: %q", got)
 	}
 }
 
