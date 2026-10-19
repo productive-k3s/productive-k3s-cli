@@ -41,6 +41,7 @@ test-static-raw:
 	$(MAKE) docs-publish-check
 	bash ./test-release-versioning.sh
 	bash ./test-installer-security.sh
+	bash ./test-git-clone-retry.sh
 	bash ./test-set-bundles-versions.sh
 	bash ./test-set-catalog-snapshot.sh
 	bash ./test-tag-release.sh

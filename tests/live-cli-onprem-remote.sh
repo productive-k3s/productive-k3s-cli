@@ -7,6 +7,8 @@ PK3S_BIN="${PRODUCTIVE_K3S_CLI_BIN:-${ROOT_DIR}/pk3s}"
 source "${ROOT_DIR}/scripts/release-config.sh"
 # shellcheck disable=SC1091
 source "${ROOT_DIR}/tests/lib/source-compatibility.sh"
+# shellcheck disable=SC1091
+source "${ROOT_DIR}/tests/lib/git-clone.sh"
 WORK_ROOT="${PK3S_CLI_ONPREM_REMOTE_WORK_ROOT:-${HOME}}"
 WORK_DIR="$(mktemp -d "${WORK_ROOT}/pk3s-live-cli-onprem-remote.XXXXXX")"
 STAMP="$(date +%Y%m%d%H%M%S)"
@@ -71,7 +73,7 @@ prepare_profiles_repo_dir() {
     mkdir -p "${PROFILES_REPO_DIR}"
     cp -a "${profiles_source_dir}/." "${PROFILES_REPO_DIR}/"
   else
-    git clone --depth 1 --branch "${profiles_repo_ref}" "${profiles_repo_url}" "${PROFILES_REPO_DIR}" >/dev/null 2>&1 || {
+    pk3s_git_clone_with_retry "${profiles_repo_url}" "${profiles_repo_ref}" "${PROFILES_REPO_DIR}" productive-k3s-profiles || {
       fail "could not clone productive-k3s-profiles from ${profiles_repo_url} (${profiles_repo_ref})"
     }
   fi
@@ -89,7 +91,7 @@ prepare_infra_repo_dir() {
   local infra_repo_url="${PRODUCTIVE_K3S_INFRA_REPO_URL:-${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT}}"
   local infra_repo_ref="${PRODUCTIVE_K3S_INFRA_REPO_REF:-development}"
   INFRA_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-infra"
-  git clone --depth 1 --branch "${infra_repo_ref}" "${infra_repo_url}" "${INFRA_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+  pk3s_git_clone_with_retry "${infra_repo_url}" "${infra_repo_ref}" "${INFRA_REPO_DIR_LOCAL}" productive-k3s-infra || {
     fail "could not clone productive-k3s-infra from ${infra_repo_url} (${infra_repo_ref})"
   }
 }
@@ -101,7 +103,7 @@ prepare_core_repo_dir() {
   local core_repo_url="${PRODUCTIVE_K3S_CORE_REPO_URL:-${PRODUCTIVE_K3S_CORE_GIT_REMOTE_URL_DEFAULT}}"
   local core_repo_ref="${PRODUCTIVE_K3S_CORE_REPO_REF:-development}"
   CORE_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-core"
-  git clone --depth 1 --branch "${core_repo_ref}" "${core_repo_url}" "${CORE_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+  pk3s_git_clone_with_retry "${core_repo_url}" "${core_repo_ref}" "${CORE_REPO_DIR_LOCAL}" productive-k3s-core || {
     fail "could not clone productive-k3s-core from ${core_repo_url} (${core_repo_ref})"
   }
 }
@@ -113,7 +115,7 @@ prepare_addons_repo_dir() {
   local addons_repo_url="${PRODUCTIVE_K3S_ADDONS_REPO_URL:-${PRODUCTIVE_K3S_ADDONS_GIT_REMOTE_URL_DEFAULT}}"
   local addons_repo_ref="${PRODUCTIVE_K3S_ADDONS_REPO_REF:-${PRODUCTIVE_K3S_CORE_REPO_REF:-development}}"
   ADDONS_REPO_DIR_LOCAL="${WORK_DIR}/productive-k3s-addons"
-  git clone --depth 1 --branch "${addons_repo_ref}" "${addons_repo_url}" "${ADDONS_REPO_DIR_LOCAL}" >/dev/null 2>&1 || {
+  pk3s_git_clone_with_retry "${addons_repo_url}" "${addons_repo_ref}" "${ADDONS_REPO_DIR_LOCAL}" productive-k3s-addons || {
     fail "could not clone productive-k3s-addons from ${addons_repo_url} (${addons_repo_ref})"
   }
 }
