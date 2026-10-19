@@ -338,14 +338,18 @@ func TestRunConfigCoversDisableAndUsageErrors(t *testing.T) {
 	}
 
 	stderr.Reset()
-	code = Run(context.Background(), []string{"config", "observability", "set"}, Dependencies{
+	sentinel := "pk3s_live_must_not_leak"
+	code = Run(context.Background(), []string{"config", "observability", "set", sentinel}, Dependencies{
 		Stdout: &bytes.Buffer{},
 		Stderr: &stderr,
 		GOOS:   "linux",
 		GOARCH: "amd64",
 	})
-	if code != 2 || !bytes.Contains(stderr.Bytes(), []byte("Usage: pk3s config observability set")) {
-		t.Fatalf("unexpected observability set usage output: code=%d err=%q", code, stderr.String())
+	if code != 2 || !bytes.Contains(stderr.Bytes(), []byte("must not be passed")) {
+		t.Fatalf("unexpected observability set rejection: code=%d err=%q", code, stderr.String())
+	}
+	if strings.Contains(stderr.String(), sentinel) {
+		t.Fatalf("token leaked in rejection output: %q", stderr.String())
 	}
 
 	stderr.Reset()
@@ -2091,16 +2095,13 @@ func TestResolveProfileArgAndPathHelpers(t *testing.T) {
 
 func TestDefaultDependenciesAndHelpers(t *testing.T) {
 	deps := DefaultDependencies()
-	if deps.Stdout == nil || deps.Stderr == nil || deps.HTTPClient == nil || deps.Exec == nil {
+	if deps.Stdin == nil || deps.Stdout == nil || deps.Stderr == nil || deps.HTTPClient == nil || deps.Exec == nil {
 		t.Fatalf("default dependencies must populate io/http/exec")
 	}
 	if deps.GOOS == "" || deps.GOARCH == "" {
 		t.Fatalf("default dependencies must capture platform")
 	}
 
-	if got := redactObservabilityToken("short-token"); got != "short-token" {
-		t.Fatalf("unexpected short token redaction: %q", got)
-	}
 	if got := removeFlag([]string{"backup", "--core", "--foo"}, "--core"); strings.Join(got, " ") != "backup --foo" {
 		t.Fatalf("unexpected removeFlag result: %#v", got)
 	}

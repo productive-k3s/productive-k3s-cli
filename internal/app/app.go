@@ -37,6 +37,7 @@ var Version = "0.9.67"
 type Dependencies struct {
 	Stdout     io.Writer
 	Stderr     io.Writer
+	Stdin      io.Reader
 	GOOS       string
 	GOARCH     string
 	WorkingDir string
@@ -61,6 +62,7 @@ func DefaultDependencies() Dependencies {
 	return Dependencies{
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,
+		Stdin:      os.Stdin,
 		GOOS:       runtime.GOOS,
 		GOARCH:     runtime.GOARCH,
 		WorkingDir: wd,
@@ -79,6 +81,9 @@ func Run(ctx context.Context, args []string, deps Dependencies) int {
 	}
 	if deps.Stderr == nil {
 		deps.Stderr = io.Discard
+	}
+	if deps.Stdin == nil {
+		deps.Stdin = os.Stdin
 	}
 	if deps.WorkingDir == "" {
 		if wd, err := os.Getwd(); err == nil {
@@ -309,17 +314,40 @@ func runConfig(args []string, deps Dependencies) int {
 	case "observability":
 		switch args[1] {
 		case "set":
-			if len(args) < 3 || strings.TrimSpace(args[2]) == "" {
-				fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability set <telemetry-bearer-token>")
+			var token string
+			var err error
+			switch {
+			case len(args) == 2:
+				token, err = readSecretInput(deps.Stdin, deps.Stderr)
+			case len(args) == 4 && args[2] == "--from-env":
+				token = strings.TrimSpace(os.Getenv(args[3]))
+				if token == "" {
+					err = fmt.Errorf("environment variable %s is empty or unset", args[3])
+				}
+			default:
+				fmt.Fprintln(deps.Stderr, "Observability tokens must not be passed as command arguments.")
+				fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability set [--from-env VARIABLE]")
 				return 2
 			}
-			if err := writeObservabilityToken(args[2]); err != nil {
+			if err != nil {
+				fmt.Fprintf(deps.Stderr, "could not read observability token: %v\n", err)
+				return 1
+			}
+			if strings.TrimSpace(token) == "" {
+				fmt.Fprintln(deps.Stderr, "observability token cannot be empty")
+				return 2
+			}
+			if err := writeObservabilityToken(token); err != nil {
 				fmt.Fprintf(deps.Stderr, "could not persist observability config: %v\n", err)
 				return 1
 			}
 			fmt.Fprintln(deps.Stdout, "Observability token has been configured for future pk3s runs.")
 			return 0
 		case "clear":
+			if len(args) != 2 {
+				fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability clear")
+				return 2
+			}
 			if err := clearObservabilityToken(); err != nil {
 				fmt.Fprintf(deps.Stderr, "could not persist observability config: %v\n", err)
 				return 1
@@ -327,6 +355,10 @@ func runConfig(args []string, deps Dependencies) int {
 			fmt.Fprintln(deps.Stdout, "Observability token has been cleared.")
 			return 0
 		case "status":
+			if len(args) != 2 {
+				fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability status")
+				return 2
+			}
 			token, err := readObservabilityToken()
 			if err != nil {
 				fmt.Fprintf(deps.Stderr, "could not read observability config: %v\n", err)
@@ -336,7 +368,7 @@ func runConfig(args []string, deps Dependencies) int {
 				fmt.Fprintln(deps.Stdout, "Observability token is not configured.")
 				return 0
 			}
-			fmt.Fprintf(deps.Stdout, "Observability token is configured: %s\n", redactObservabilityToken(token))
+			fmt.Fprintln(deps.Stdout, "Observability token is configured.")
 			return 0
 		default:
 			fmt.Fprintln(deps.Stderr, "Usage: pk3s config observability <set|clear|status>")
@@ -346,17 +378,6 @@ func runConfig(args []string, deps Dependencies) int {
 		fmt.Fprintln(deps.Stderr, "Usage: pk3s config <telemetry|observability> ...")
 		return 2
 	}
-}
-
-func redactObservabilityToken(token string) string {
-	token = strings.TrimSpace(token)
-	if token == "" {
-		return ""
-	}
-	if len(token) <= 12 {
-		return token
-	}
-	return token[:12] + "..."
 }
 
 func runBundle(ctx context.Context, args []string, deps Dependencies) int {

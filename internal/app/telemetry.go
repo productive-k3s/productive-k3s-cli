@@ -8,12 +8,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/x/term"
 )
 
 const defaultTelemetryEndpoint = "https://telemetry.productive-k3s.io/telemetry"
@@ -109,6 +112,12 @@ func readTelemetryConfig() (*telemetryPreference, error) {
 		}
 		return &telemetryPreference{}, err
 	}
+	if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+		return &telemetryPreference{}, err
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return &telemetryPreference{}, err
+	}
 	var cfg telemetryPreference
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return &telemetryPreference{}, err
@@ -116,24 +125,56 @@ func readTelemetryConfig() (*telemetryPreference, error) {
 	return &cfg, nil
 }
 
-func writeTelemetryPreference(enabled bool) error {
+func writeTelemetryConfig(cfg *telemetryPreference) error {
 	path, err := telemetryConfigPath()
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return err
+	}
+	raw, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".config.json.*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(append(raw, '\n')); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0o600)
+}
+
+func writeTelemetryPreference(enabled bool) error {
 	cfg, err := readTelemetryConfig()
 	if err != nil {
 		return err
 	}
 	cfg.Telemetry.Enabled = &enabled
-	raw, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return writeTelemetryConfig(cfg)
 }
 
 func readObservabilityToken() (string, error) {
@@ -145,43 +186,38 @@ func readObservabilityToken() (string, error) {
 }
 
 func writeObservabilityToken(token string) error {
-	path, err := telemetryConfigPath()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	cfg, err := readTelemetryConfig()
 	if err != nil {
 		return err
 	}
 	cfg.Observability.BearerToken = strings.TrimSpace(token)
-	raw, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	return writeTelemetryConfig(cfg)
 }
 
 func clearObservabilityToken() error {
-	path, err := telemetryConfigPath()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	cfg, err := readTelemetryConfig()
 	if err != nil {
 		return err
 	}
 	cfg.Observability.BearerToken = ""
-	raw, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
+	return writeTelemetryConfig(cfg)
+}
+
+func readSecretInput(reader io.Reader, prompt io.Writer) (string, error) {
+	if file, ok := reader.(*os.File); ok && term.IsTerminal(file.Fd()) {
+		fmt.Fprint(prompt, "Observability token: ")
+		raw, err := term.ReadPassword(file.Fd())
+		fmt.Fprintln(prompt)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimSpace(string(raw)), nil
 	}
-	return os.WriteFile(path, append(raw, '\n'), 0o644)
+	raw, err := bufio.NewReader(reader).ReadString('\n')
+	if err != nil && raw == "" {
+		return "", err
+	}
+	return strings.TrimSpace(raw), nil
 }
 
 func isInteractiveTerminal() bool {

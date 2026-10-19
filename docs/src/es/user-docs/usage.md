@@ -79,7 +79,7 @@ Ejemplos:
 ```bash
 pk3s config telemetry status
 pk3s config telemetry enable
-pk3s config observability set pk3s_live_xxxxx
+printf '%s\n' "$PK3S_OBSERVABILITY_TOKEN" | pk3s config observability set
 pk3s config observability status
 pk3s plan --profile profiles/multipass/1-server-2-agents.env --telemetry disable
 pk3s install --core-only --telemetry enable
