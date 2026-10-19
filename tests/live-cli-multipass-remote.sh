@@ -117,6 +117,26 @@ run_pk3s() {
     "${PK3S_BIN}" "$@"
 }
 
+run_pk3s_with_timeout() {
+  local seconds="$1"
+  shift
+
+  run_pk3s "$@" &
+  local cmd_pid=$!
+  local waited=0
+  while kill -0 "${cmd_pid}" >/dev/null 2>&1; do
+    if (( waited >= seconds )); then
+      kill "${cmd_pid}" >/dev/null 2>&1 || true
+      wait "${cmd_pid}" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  wait "${cmd_pid}"
+}
+
 fallback_cleanup() {
   multipass delete \
     "${CLUSTER_PREFIX}-server" \
@@ -126,7 +146,7 @@ fallback_cleanup() {
 }
 
 initial_cleanup() {
-  run_pk3s infra destroy "${PROFILE_NAME}" >/dev/null 2>&1 || true
+  run_pk3s_with_timeout 300 infra destroy --yes "${PROFILE_NAME}" >/dev/null 2>&1 || true
   fallback_cleanup
 }
 
@@ -150,7 +170,7 @@ run_pk3s profile validate "${PROFILE_NAME}"
 run_pk3s infra plan "${PROFILE_NAME}"
 run_pk3s infra apply "${PROFILE_NAME}"
 run_pk3s infra status "${PROFILE_NAME}"
-run_pk3s infra destroy "${PROFILE_NAME}"
+run_pk3s_with_timeout 300 infra destroy --yes "${PROFILE_NAME}"
 
 trap - EXIT
 fallback_cleanup

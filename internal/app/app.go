@@ -888,6 +888,9 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 				}
 			}
 			delegatedArgs := []string{"profile", args[0], "--tgz", resolved}
+			if args[0] == "destroy" && contains(filteredArgs, "--yes") {
+				delegatedArgs = append(delegatedArgs, "--yes")
+			}
 			if args[0] == "export" {
 				delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
 			}
@@ -911,6 +914,9 @@ func runInfra(ctx context.Context, args []string, deps Dependencies, telemetryOv
 			}
 		}
 		delegatedArgs := []string{"profile", args[0], "--tgz", tgz}
+		if args[0] == "destroy" && contains(filteredArgs, "--yes") {
+			delegatedArgs = append(delegatedArgs, "--yes")
+		}
 		if args[0] == "export" {
 			delegatedArgs = append(delegatedArgs, removeTGZArg(filteredArgs)...)
 		}

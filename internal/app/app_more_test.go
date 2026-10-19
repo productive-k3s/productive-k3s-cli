@@ -1054,7 +1054,7 @@ func TestRunInfraApplyAndDestroyDelegateTGZToInfra(t *testing.T) {
 	var invocations []Invocation
 	for _, args := range [][]string{
 		{"infra", "apply", "--tgz", tgzPath},
-		{"infra", "destroy", "--tgz", tgzPath},
+		{"infra", "destroy", "--yes", "--tgz", tgzPath},
 	} {
 		code := Run(context.Background(), args, noTelemetryDeps(t, Dependencies{
 			Stdout:     &bytes.Buffer{},
@@ -1079,7 +1079,7 @@ func TestRunInfraApplyAndDestroyDelegateTGZToInfra(t *testing.T) {
 	if strings.Join(invocations[0].Args, " ") != "profile apply --tgz "+tgzPath {
 		t.Fatalf("unexpected infra apply tgz args: %#v", invocations[0].Args)
 	}
-	if strings.Join(invocations[1].Args, " ") != "profile destroy --tgz "+tgzPath {
+	if strings.Join(invocations[1].Args, " ") != "profile destroy --tgz "+tgzPath+" --yes" {
 		t.Fatalf("unexpected infra destroy tgz args: %#v", invocations[1].Args)
 	}
 }
@@ -1599,25 +1599,34 @@ entries:
 	t.Setenv("PK3S_CATALOG_URLS", server.URL+"/index.yaml")
 	expectedTGZ := expectedDownloadedTGZPath(filepath.Join(workingDir, "cache"), server.URL+"/infra/aws-single-node-basic-0.1.0.tgz")
 
-	var got Invocation
-	code := Run(context.Background(), []string{"infra", "status", "aws-single-node-basic"}, noTelemetryDeps(t, Dependencies{
-		Stdout:     &bytes.Buffer{},
-		Stderr:     &bytes.Buffer{},
-		GOOS:       "linux",
-		GOARCH:     "amd64",
-		WorkingDir: workingDir,
-		CacheDir:   filepath.Join(workingDir, "cache"),
-		HTTPClient: server.Client(),
-		Exec: func(_ context.Context, invocation Invocation) error {
-			got = invocation
-			return nil
-		},
-	}))
-	if code != 0 {
-		t.Fatalf("expected infra status by catalog name to succeed, got %d", code)
+	tests := []struct {
+		args     []string
+		expected string
+	}{
+		{[]string{"infra", "status", "aws-single-node-basic"}, "profile status --tgz " + expectedTGZ},
+		{[]string{"infra", "destroy", "--yes", "aws-single-node-basic"}, "profile destroy --tgz " + expectedTGZ + " --yes"},
 	}
-	if strings.Join(got.Args, " ") != "profile status --tgz "+expectedTGZ {
-		t.Fatalf("unexpected infra catalog args: %#v", got.Args)
+	for _, test := range tests {
+		var got Invocation
+		code := Run(context.Background(), test.args, noTelemetryDeps(t, Dependencies{
+			Stdout:     &bytes.Buffer{},
+			Stderr:     &bytes.Buffer{},
+			GOOS:       "linux",
+			GOARCH:     "amd64",
+			WorkingDir: workingDir,
+			CacheDir:   filepath.Join(workingDir, "cache"),
+			HTTPClient: server.Client(),
+			Exec: func(_ context.Context, invocation Invocation) error {
+				got = invocation
+				return nil
+			},
+		}))
+		if code != 0 {
+			t.Fatalf("expected %v by catalog name to succeed, got %d", test.args, code)
+		}
+		if strings.Join(got.Args, " ") != test.expected {
+			t.Fatalf("unexpected infra catalog args for %v: %#v", test.args, got.Args)
+		}
 	}
 }
 
