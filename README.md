@@ -163,3 +163,5 @@ explicitly instead of being silently omitted.
 This project is licensed under the Apache License 2.0.
 
 See [LICENSE](./LICENSE).
+The installer selects the exact OS/architecture release asset, verifies it against the release
+`checksums.txt`, and only then atomically replaces the local binary.
