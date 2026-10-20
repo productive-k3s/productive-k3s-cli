@@ -59,3 +59,7 @@ Typical paths:
 
 - Linux/macOS: `~/.cache/pk3s`
 - Windows: `%LocalAppData%\pk3s`
+The script uses the repository's explicit release version, downloads the matching
+OS/architecture archive and `checksums.txt` over HTTPS, and requires exactly one valid
+SHA256 entry for that archive. It verifies the digest before extraction and atomically
+replaces the installed binary only after all checks pass.

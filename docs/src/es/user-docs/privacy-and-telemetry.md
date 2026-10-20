@@ -28,10 +28,17 @@ El CLI expone comandos explícitos de configuración:
 pk3s config telemetry enable
 pk3s config telemetry disable
 pk3s config telemetry status
-pk3s config observability set pk3s_live_xxxxx
+printf '%s\n' "$PK3S_OBSERVABILITY_TOKEN" | pk3s config observability set
 pk3s config observability clear
 pk3s config observability status
 ```
+
+Al ejecutar `pk3s config observability set` en una terminal, el token se lee sin mostrarlo.
+La automatizacion puede enviarlo por stdin o usar `--from-env VARIABLE`, que solo expone
+el nombre de la variable en los argumentos del proceso. El token como argumento posicional
+es rechazado. El CLI guarda la configuracion combinada en un directorio privado `0700`
+y un archivo `0600`, reemplaza las actualizaciones de forma atomica y endurece permisos
+anteriores cuando lee la configuracion.
 
 Esos comandos afectan corridas futuras. Un override con `--telemetry ...` sigue mandando para la invocación actual.
 

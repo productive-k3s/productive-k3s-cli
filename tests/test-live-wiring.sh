@@ -35,6 +35,10 @@ assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-live-expor
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-live-gha-onprem-remote"
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-clean"
 assert_contains "${ROOT_DIR}/scripts/productive-k3s-cli-dev.sh" "test-checkstatus"
+assert_contains "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh" 'TOFU_APPLY_PARALLELISM="${TOFU_APPLY_PARALLELISM:-1}"'
+assert_contains "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh" 'MULTIPASS_LAUNCH_MAX_ATTEMPTS="${MULTIPASS_LAUNCH_MAX_ATTEMPTS:-5}"'
+assert_contains "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh" 'run_with_timeout 30 multipass delete "${instance}"'
+assert_not_contains "${ROOT_DIR}/tests/live-cli-catalog-multipass.sh" 'multipass delete "${instances[@]}"'
 assert_contains "${ROOT_DIR}/Makefile" "test-live-remote"
 assert_contains "${ROOT_DIR}/Makefile" "test-live-catalog"
 assert_contains "${ROOT_DIR}/Makefile" "test-live-export"

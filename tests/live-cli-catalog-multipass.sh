@@ -9,6 +9,9 @@ CATALOG_URLS="${PK3S_CATALOG_URLS:-${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}}"
 PROFILE_NAME="${PK3S_CLI_CATALOG_PROFILE_NAME:-multipass-1-server-2-agents}"
 ADDON_NAME="${PK3S_CLI_CATALOG_ADDON_NAME:-nginx}"
 CLUSTER_PREFIX="${PK3S_CLI_MULTIPASS_CLUSTER_PREFIX:-productive-k3s-mp}"
+MULTIPASS_LAUNCH_MAX_ATTEMPTS="${MULTIPASS_LAUNCH_MAX_ATTEMPTS:-5}"
+MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS="${MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS:-5}"
+TOFU_APPLY_PARALLELISM="${TOFU_APPLY_PARALLELISM:-1}"
 
 fail() {
   printf '[FAIL] %s\n' "$*" >&2
@@ -24,7 +27,27 @@ run_pk3s() {
   if [[ -n "${PRODUCTIVE_K3S_CORE_REPO_DIR:-}${PRODUCTIVE_K3S_CORE_REPO_URL:-}${PRODUCTIVE_K3S_CORE_REPO_REF:-}${PRODUCTIVE_K3S_INFRA_REPO_DIR:-}${PRODUCTIVE_K3S_INFRA_REPO_URL:-}${PRODUCTIVE_K3S_INFRA_REPO_REF:-}" ]]; then
     source_mode="local"
   fi
-  PK3S_CATALOG_URLS="${CATALOG_URLS}" PRODUCTIVE_K3S_SOURCE="${source_mode}" "${PK3S_BIN}" "$@"
+  PK3S_CATALOG_URLS="${CATALOG_URLS}" PRODUCTIVE_K3S_SOURCE="${source_mode}" MULTIPASS_LAUNCH_MAX_ATTEMPTS="${MULTIPASS_LAUNCH_MAX_ATTEMPTS}" MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS="${MULTIPASS_LAUNCH_RETRY_DELAY_SECONDS}" TOFU_APPLY_PARALLELISM="${TOFU_APPLY_PARALLELISM}" "${PK3S_BIN}" "$@"
+}
+
+run_pk3s_with_timeout() {
+  local seconds="$1"
+  shift
+
+  run_pk3s "$@" &
+  local cmd_pid=$!
+  local waited=0
+  while kill -0 "${cmd_pid}" >/dev/null 2>&1; do
+    if (( waited >= seconds )); then
+      kill "${cmd_pid}" >/dev/null 2>&1 || true
+      wait "${cmd_pid}" >/dev/null 2>&1 || true
+      return 124
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  wait "${cmd_pid}"
 }
 
 run_with_timeout() {
@@ -65,7 +88,11 @@ fallback_cleanup() {
   )
   local instance
 
-  run_with_timeout 30 multipass delete "${instances[@]}" >/dev/null 2>&1 || true
+  for instance in "${instances[@]}"; do
+    if instance_exists "${instance}"; then
+      run_with_timeout 30 multipass delete "${instance}" >/dev/null 2>&1 || true
+    fi
+  done
 
   for instance in "${instances[@]}"; do
     local attempt=0
@@ -79,7 +106,7 @@ fallback_cleanup() {
 }
 
 cleanup() {
-  run_pk3s infra destroy "${PROFILE_NAME}" >/dev/null 2>&1 || true
+  run_pk3s_with_timeout 300 infra destroy --yes "${PROFILE_NAME}" >/dev/null 2>&1 || true
   fallback_cleanup
 }
 
@@ -98,7 +125,7 @@ run_pk3s infra install "${PROFILE_NAME}"
 run_pk3s infra status "${PROFILE_NAME}"
 run_pk3s addon validate "${ADDON_NAME}"
 run_pk3s addon install "${ADDON_NAME}" --profile "${PROFILE_NAME}"
-run_pk3s infra destroy "${PROFILE_NAME}"
+run_pk3s_with_timeout 300 infra destroy --yes "${PROFILE_NAME}"
 
 trap - EXIT
 fallback_cleanup

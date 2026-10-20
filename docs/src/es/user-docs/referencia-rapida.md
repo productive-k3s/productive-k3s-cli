@@ -83,7 +83,7 @@ pk3s infra status multipass-1-server-2-agents
 Destruir ese deployment:
 
 ```bash
-pk3s infra destroy multipass-1-server-2-agents
+pk3s infra destroy --yes multipass-1-server-2-agents
 ```
 
 Instalar un profile que requiere overrides locales específicos de la instalación:

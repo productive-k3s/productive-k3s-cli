@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -713,13 +714,15 @@ func TestRunConfigTelemetryEnablePersistsPreference(t *testing.T) {
 	}
 }
 
-func TestRunConfigObservabilitySetPersistsToken(t *testing.T) {
+func TestRunConfigObservabilitySetPersistsTokenSecurely(t *testing.T) {
 	workingDir := t.TempDir()
 	configHome := filepath.Join(workingDir, "config")
 	t.Setenv("XDG_CONFIG_HOME", configHome)
+	token := "pk3s_live_abcdef123456"
 
 	var stdout bytes.Buffer
-	code := Run(context.Background(), []string{"config", "observability", "set", "pk3s_live_abcdef123456"}, Dependencies{
+	code := Run(context.Background(), []string{"config", "observability", "set"}, Dependencies{
+		Stdin:      strings.NewReader(token + "\n"),
 		Stdout:     &stdout,
 		Stderr:     &bytes.Buffer{},
 		GOOS:       "linux",
@@ -731,7 +734,9 @@ func TestRunConfigObservabilitySetPersistsToken(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	raw, err := os.ReadFile(filepath.Join(configHome, "productive-k3s-cli", "config.json"))
+	configDir := filepath.Join(configHome, "productive-k3s-cli")
+	configPath := filepath.Join(configDir, "config.json")
+	raw, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("expected config file to exist: %v", err)
 	}
@@ -739,40 +744,78 @@ func TestRunConfigObservabilitySetPersistsToken(t *testing.T) {
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		t.Fatalf("invalid config json: %v", err)
 	}
-	if payload["observability"]["bearer_token"] != "pk3s_live_abcdef123456" {
-		t.Fatalf("expected observability token to be persisted, got %s", raw)
+	if payload["observability"]["bearer_token"] != token {
+		t.Fatalf("expected observability token to be persisted")
 	}
-	if !bytes.Contains(stdout.Bytes(), []byte("configured")) {
-		t.Fatalf("expected status message, got %q", stdout.String())
+	for path, want := range map[string]os.FileMode{configDir: 0o700, configPath: 0o600} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Fatalf("unexpected permissions for %s: got %04o want %04o", path, got, want)
+		}
+	}
+	if strings.Contains(stdout.String(), token) {
+		t.Fatalf("token leaked to stdout: %q", stdout.String())
 	}
 }
 
-func TestRunConfigObservabilityStatusRedactsToken(t *testing.T) {
-	workingDir := t.TempDir()
-	configHome := filepath.Join(workingDir, "config")
+func TestRunConfigObservabilitySetFromEnvironment(t *testing.T) {
+	configHome := filepath.Join(t.TempDir(), "config")
 	t.Setenv("XDG_CONFIG_HOME", configHome)
-	if err := writeObservabilityToken("pk3s_live_abcdef1234567890"); err != nil {
-		t.Fatalf("writeObservabilityToken: %v", err)
+	t.Setenv("PK3S_OBSERVABILITY_TOKEN", "pk3s_live_from_env")
+
+	code := Run(context.Background(), []string{"config", "observability", "set", "--from-env", "PK3S_OBSERVABILITY_TOKEN"}, Dependencies{
+		Stdout: &bytes.Buffer{},
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	token, err := readObservabilityToken()
+	if err != nil || token != "pk3s_live_from_env" {
+		t.Fatalf("unexpected stored token: token=%q err=%v", token, err)
+	}
+}
+
+func TestRunConfigObservabilityStatusDoesNotRevealTokenAndTightensPermissions(t *testing.T) {
+	configHome := filepath.Join(t.TempDir(), "config")
+	configDir := filepath.Join(configHome, "productive-k3s-cli")
+	configPath := filepath.Join(configDir, "config.json")
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	token := "pk3s_live_abcdef1234567890"
+	raw := []byte("{\"observability\":{\"bearer_token\":\"" + token + "\"}}\n")
+	if err := os.WriteFile(configPath, raw, 0o644); err != nil {
+		t.Fatal(err)
 	}
 
 	var stdout bytes.Buffer
 	code := Run(context.Background(), []string{"config", "observability", "status"}, Dependencies{
-		Stdout:     &stdout,
-		Stderr:     &bytes.Buffer{},
-		GOOS:       "linux",
-		GOARCH:     "amd64",
-		WorkingDir: workingDir,
-		CacheDir:   filepath.Join(workingDir, "cache"),
+		Stdout: &stdout,
+		Stderr: &bytes.Buffer{},
+		GOOS:   "linux",
+		GOARCH: "amd64",
 	})
-
 	if code != 0 {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
-	if !bytes.Contains(stdout.Bytes(), []byte("pk3s_live_ab...")) {
-		t.Fatalf("expected redacted token in status output, got %q", stdout.String())
+	if strings.Contains(stdout.String(), token) || strings.Contains(stdout.String(), "pk3s_live") {
+		t.Fatalf("token leaked in status output: %q", stdout.String())
 	}
-	if bytes.Contains(stdout.Bytes(), []byte("abcdef1234567890")) {
-		t.Fatalf("expected full token to stay hidden, got %q", stdout.String())
+	for path, want := range map[string]os.FileMode{configDir: 0o700, configPath: 0o600} {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Fatalf("permissions were not tightened for %s: got %04o want %04o", path, got, want)
+		}
 	}
 }
 

@@ -73,3 +73,4 @@ Generated at runtime and intentionally not tracked:
 - `tests/coverage/`
 
 Unlike `core` and `infra`, this repo keeps `tests/fixtures/` because the shell contract layer consumes real bundle/profile/manifests fixtures.
+- public installer checksum verification and atomic replacement failure paths
