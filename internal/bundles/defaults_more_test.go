@@ -46,7 +46,7 @@ func TestCatalogSHA256Default(t *testing.T) {
 		if err := os.Unsetenv("PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT"); err != nil {
 			t.Fatal(err)
 		}
-		if got := CatalogSHA256Default(); got != "c792efb58db68aec37a2c23451045451ed17c64843dfbe268b00360d70f4057b" {
+		if got := CatalogSHA256Default(); got != "93be2e919e58b6ce9eadc38505490625ec4f67d6855642b63adc4c4c9d0f46a7" {
 			t.Fatalf("unexpected release catalog digest: %q", got)
 		}
 	})
