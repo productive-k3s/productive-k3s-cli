@@ -42,8 +42,8 @@ assert_eq "${PRODUCTIVE_K3S_INFRA_GIT_REMOTE_URL_DEFAULT}" "https://github.com/p
 assert_eq "${PRODUCTIVE_K3S_PROFILES_GIT_REMOTE_URL_DEFAULT}" "https://github.com/productive-k3s/productive-k3s-profiles.git" "default profiles git remote url"
 assert_eq "${PRODUCTIVE_K3S_PROFILES_MULTIPASS_PROFILE_URL_DEFAULT}" "https://raw.githubusercontent.com/productive-k3s/productive-k3s-profiles/main/profiles/local/multipass/1-server-2-agents.env" "default multipass profile url"
 assert_eq "${PRODUCTIVE_K3S_CLI_REPO_DEFAULT}" "productive-k3s/productive-k3s-cli" "default cli release repo"
-assert_eq "${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}" "https://catalogs.productive-k3s.io/catalogs/0.9.67/index.yaml" "default catalog url"
-assert_eq "${PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT}" "93be2e919e58b6ce9eadc38505490625ec4f67d6855642b63adc4c4c9d0f46a7" "default catalog digest"
+assert_eq "${PRODUCTIVE_K3S_CATALOG_URL_DEFAULT}" "https://catalogs.productive-k3s.io/catalogs/0.9.68/index.yaml" "default catalog url"
+assert_eq "${PRODUCTIVE_K3S_CATALOG_SHA256_DEFAULT}" "90b976f311a0ef54a993b57dcb374ac240ad35a9293cacbc039a9ebea80b9d52" "default catalog digest"
 
 infra_core="${PRODUCTIVE_K3S_INFRA_VERSION_DEFAULT#*-}"
 assert_eq "${infra_core}" "${PRODUCTIVE_K3S_CORE_VERSION_DEFAULT}" "infra/core compatibility suffix"
